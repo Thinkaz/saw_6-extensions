@@ -1,11 +1,11 @@
 {
-  "buildTime": "2025-10-25T08:59:09.333Z",
+  "buildTime": "2025-10-25T09:03:58.857Z",
   "builtWith": {
     "toolchain": "1.0.0-alpha.57",
     "types": "1.0.0-alpha.57"
   },
   "repository": {
-    "name": "Template Extensions (0.9)",
+    "name": "Saw_6 Extensions (0.9)",
     "description": "Paperback extensions designed as templates to help developers get started quickly. Maintained by Inkdex."
   },
   "sources": [
@@ -20,12 +20,10 @@
       "badges": [],
       "developers": [
         {
-          "name": "Celarye",
-          "website": "https://celarye.dev",
-          "github": "https://github.com/Celarye"
+          "name": "Saw_6"
         }
       ],
-      "id": "ContentTemplate"
+      "id": "Natomanga"
     }
   ]
 }
