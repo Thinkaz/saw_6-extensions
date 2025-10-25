@@ -116,7 +116,6 @@ export class NatomangaExtension implements NatomangaImplementation {
         switch (section.id) {
             case "discover-section-template1":
                 type = "featuredCarouselItem";
-                // Sélecteur corrigé pour le carousel populaire
                 $(".slide .owl-carousel .item").each((_i, el) => {
                     const $el = $(el);
                     const link = $el.find("a").attr("href");
@@ -145,7 +144,6 @@ export class NatomangaExtension implements NatomangaImplementation {
 
             case "discover-section-template2":
                 type = "prominentCarouselItem";
-                // Sélecteur corrigé pour la liste
                 $(".list-comic-item-wrap")
                     .slice(0, 10)
                     .each((_i, el) => {
@@ -179,7 +177,6 @@ export class NatomangaExtension implements NatomangaImplementation {
 
             case "discover-section-template3":
                 type = "simpleCarouselItem";
-                // Sélecteur corrigé pour la liste
                 $(".list-comic-item-wrap")
                     .slice(10, 20)
                     .each((_i, el) => {
@@ -384,12 +381,10 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 
     async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
-        // Supprimer les anciens cookies
         for (const cookie of this.cookieStorageInterceptor.cookies) {
             this.cookieStorageInterceptor.deleteCookie(cookie);
         }
 
-        // Ajouter les nouveaux cookies
         for (const cookie of cookies) {
             if (cookie.expires && cookie.expires.getTime() <= Date.now()) {
                 continue;
@@ -398,15 +393,19 @@ export class NatomangaExtension implements NatomangaImplementation {
         }
     }
 
-    checkCloudflareStatus(status: number): void {
+    // MODIFICATION ICI : Passer l'URL de la requête qui a échoué
+    checkCloudflareStatus(request: Request, status: number): void {
         if (status == 503 || status == 403) {
-            throw new CloudflareError({ url: baseUrl, method: "GET" });
+            throw new CloudflareError({
+                url: request.url, // Utiliser l'URL de la requête qui a échoué
+                method: request.method,
+            });
         }
     }
 
     private async fetchCheerio(request: Request): Promise<CheerioAPI> {
         const [response, data] = await Application.scheduleRequest(request);
-        this.checkCloudflareStatus(response.status);
+        this.checkCloudflareStatus(request, response.status); // Passer la requête
         const htmlStr = Application.arrayBufferToUTF8String(data);
         const dom = htmlparser2.parseDocument(htmlStr);
         return cheerio.load(dom);
