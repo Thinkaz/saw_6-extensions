@@ -1,11 +1,15 @@
 import {
     BasicRateLimiter,
+    CloudflareError,
     ContentRating,
+    CookieStorageInterceptor,
     DiscoverSectionType,
     Form,
     type Chapter,
     type ChapterDetails,
     type ChapterProviding,
+    type CloudflareBypassRequestProviding,
+    type Cookie,
     type DiscoverSection,
     type DiscoverSectionItem,
     type DiscoverSectionProviding,
@@ -21,10 +25,6 @@ import {
     type SourceManga,
     type Tag,
     type TagSection,
-    CloudflareBypassRequestProviding,
-    CloudflareError,
-    Cookie,
-    CookieStorageInterceptor,
 } from "@paperback/types";
 import * as cheerio from "cheerio";
 import type { CheerioAPI } from "cheerio";
@@ -388,7 +388,7 @@ export class NatomangaExtension implements NatomangaImplementation {
         for (const cookie of this.cookieStorageInterceptor.cookies) {
             this.cookieStorageInterceptor.deleteCookie(cookie);
         }
-        
+
         // Ajouter les nouveaux cookies
         for (const cookie of cookies) {
             if (cookie.expires && cookie.expires.getTime() <= Date.now()) {
