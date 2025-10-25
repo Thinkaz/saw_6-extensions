@@ -59,6 +59,37 @@ export class NatomangaExtension implements NatomangaImplementation {
         this.mainRateLimiter.registerInterceptor();
         this.mainInterceptor.registerInterceptor();
         this.cookieStorageInterceptor.registerInterceptor();
+
+        // NOUVEAU : Vérifier si on a besoin de bypass au démarrage
+        await this.checkCloudflareOnStartup();
+    }
+
+    // NOUVELLE MÉTHODE : Forcer le bypass au démarrage si nécessaire
+    private async checkCloudflareOnStartup(): Promise<void> {
+        try {
+            // Faire une requête test vers une page manga pour vérifier Cloudflare
+            const testRequest: Request = {
+                url: `${baseUrl}/manga/one-piece`, // Page de test
+                method: "GET",
+            };
+
+            const [response] = await Application.scheduleRequest(testRequest);
+
+            // Si on détecte Cloudflare, déclencher le bypass immédiatement
+            if (response.status === 403 || response.status === 503) {
+                throw new CloudflareError({
+                    url: testRequest.url,
+                    method: testRequest.method,
+                });
+            }
+        } catch (error) {
+            // Si c'est une CloudflareError, la laisser remonter pour déclencher le WebView
+            if (error instanceof CloudflareError) {
+                throw error;
+            }
+            // Autres erreurs : les ignorer silencieusement
+            console.log("Cloudflare check skipped:", error);
+        }
     }
 
     async getSettingsForm(): Promise<Form> {
@@ -393,11 +424,10 @@ export class NatomangaExtension implements NatomangaImplementation {
         }
     }
 
-    // MODIFICATION ICI : Passer l'URL de la requête qui a échoué
     checkCloudflareStatus(request: Request, status: number): void {
         if (status == 503 || status == 403) {
             throw new CloudflareError({
-                url: request.url, // Utiliser l'URL de la requête qui a échoué
+                url: request.url,
                 method: request.method,
             });
         }
@@ -405,7 +435,7 @@ export class NatomangaExtension implements NatomangaImplementation {
 
     private async fetchCheerio(request: Request): Promise<CheerioAPI> {
         const [response, data] = await Application.scheduleRequest(request);
-        this.checkCloudflareStatus(request, response.status); // Passer la requête
+        this.checkCloudflareStatus(request, response.status);
         const htmlStr = Application.arrayBufferToUTF8String(data);
         const dom = htmlparser2.parseDocument(htmlStr);
         return cheerio.load(dom);
