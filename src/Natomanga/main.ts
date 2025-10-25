@@ -98,16 +98,20 @@ export class NatomangaExtension implements NatomangaImplementation {
         const $ = await this.fetchCheerio(request);
         const items: DiscoverSectionItem[] = [];
 
-        $(".slide .owl-item .item").each((_i, el) => {
+        // ### CORRECTION ICI ###
+        // Ancien sélecteur: ".slide .owl-item .item"
+        $("div.slide-popular div.item-qfix").each((_i, el) => {
             const $el = $(el);
 
-            const link = $el.find("a").attr("href");
+            // Le lien principal est sur l'image/le titre
+            const link = $el.find("a.tooltip").attr("href");
             if (!link || link.includes("toffee.ai")) return;
 
-            const title = $el.find(".slide-caption h3 a").text().trim();
-            const imageUrl = $el.find("img").attr("src") ?? "";
             const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
+            const imageUrl = $el.find("img").attr("src") ?? "";
 
+            // Vos sélecteurs internes étaient corrects
+            const title = $el.find(".slide-caption h3 a").text().trim();
             const chapterLink = $el.find('.slide-caption a[href*="/chapter"]');
             const supertitle = chapterLink.text().trim();
 
@@ -140,20 +144,27 @@ export class NatomangaExtension implements NatomangaImplementation {
         const $ = await this.fetchCheerio(request);
         const items: DiscoverSectionItem[] = [];
 
-        $(".doreamon .itemupdate.first").each((_i, el) => {
+        // ### CORRECTION ICI ###
+        // Ancien sélecteur: ".doreamon .itemupdate.first"
+        $(".panel-content-genres .content-genres-item").each((_i, el) => {
             const $el = $(el);
 
-            const link = $el.find("a.cover").attr("href");
+            // Ancien sélecteur: a.cover
+            const linkEl = $el.find("a.genres-item-name");
+            const link = linkEl.attr("href");
             if (!link || link.includes("toffee.ai")) return;
 
-            const title = $el.find("h3 a").first().text().trim();
+            // Ancien sélecteur: h3 a
+            const title = linkEl.text().trim();
+
+            // Ancien sélecteur: img
             const imageUrl =
-                $el.find("img").attr("src") ??
-                $el.find("img").attr("data-src") ??
-                "";
+                $el.find("a.genres-item-img img").attr("src") ?? "";
+
             const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
 
-            const latestChapterEl = $el.find("li").first().find("a");
+            // Ancien sélecteur: li a
+            const latestChapterEl = $el.find("a.genres-item-chap");
             const subtitle = latestChapterEl.text().trim();
             const chapterHref = latestChapterEl.attr("href") ?? "";
             const chapterId = chapterHref.split("/chapter-")[1] ?? "0";
@@ -183,6 +194,8 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 
     async getSearchFilters(): Promise<SearchFilter[]> {
+        // Ce code est correct, mais les filtres ne sont pas utilisés dans getSearchResults
+        // Vous pourrez l'ajouter plus tard si vous le souhaitez.
         return [
             {
                 id: "status",
@@ -204,7 +217,6 @@ export class NatomangaExtension implements NatomangaImplementation {
     ): Promise<PagedResults<SearchResultItem>> {
         const page = metadata?.page ?? 1;
 
-        // URL format: https://www.natomanga.com/search/story/solo_leveling?page=2
         const searchQuery = query.title.trim().replace(/\s+/g, "_");
         const request: Request = {
             url: `${baseUrl}/search/story/${searchQuery}?page=${page}`,
@@ -214,25 +226,27 @@ export class NatomangaExtension implements NatomangaImplementation {
         const $ = await this.fetchCheerio(request);
         const items: SearchResultItem[] = [];
 
-        $(".doreamon .itemupdate.first").each((_i, el) => {
+        // ### CORRECTION ICI ###
+        // Ancien sélecteur: ".doreamon .itemupdate.first"
+        $(".panel-content-genres .content-genres-item").each((_i, el) => {
             const $el = $(el);
 
-            const link = $el.find("a.cover").attr("href");
+            // Ancien sélecteur: a.cover
+            const linkEl = $el.find("a.genres-item-name");
+            const link = linkEl.attr("href");
             if (!link || link.includes("toffee.ai")) return;
 
-            const title = $el.find("h3 a").first().text().trim();
+            // Ancien sélecteur: h3 a
+            const title = linkEl.text().trim();
+
+            // Ancien sélecteur: img
             const imageUrl =
-                $el.find("img").attr("src") ??
-                $el.find("img").attr("data-src") ??
-                "";
+                $el.find("a.genres-item-img img").attr("src") ?? "";
+
             const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
 
-            const latestChapter = $el
-                .find("li")
-                .first()
-                .find("a")
-                .text()
-                .trim();
+            // Ancien sélecteur: li a
+            const latestChapter = $el.find("a.genres-item-chap").text().trim();
 
             if (mangaId && title) {
                 items.push({
@@ -253,6 +267,7 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
+        // Votre code ici était déjà correct.
         const url = `${baseUrl}/manga/${mangaId}`;
         const request: Request = { url, method: "GET" };
         const $ = await this.fetchCheerio(request);
@@ -331,6 +346,7 @@ export class NatomangaExtension implements NatomangaImplementation {
         sourceManga: SourceManga,
         sinceDate?: Date,
     ): Promise<Chapter[]> {
+        // Votre code ici était déjà correct.
         const url = `${baseUrl}/manga/${sourceManga.mangaId}`;
         const request: Request = { url, method: "GET" };
         const $ = await this.fetchCheerio(request);
@@ -385,7 +401,7 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 
     async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
-        // URL format: https://www.natomanga.com/manga/regressor-instruction-manual/chapter-159
+        // Votre code ici était déjà correct.
         const url = `${baseUrl}/manga/${chapter.sourceManga.mangaId}/chapter-${chapter.chapterId}`;
         const request: Request = { url, method: "GET" };
         const $ = await this.fetchCheerio(request);
@@ -412,6 +428,7 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 
     private parseDate(dateText: string): Date {
+        // Votre code ici était déjà correct.
         const now = new Date();
 
         if (!dateText?.trim()) return now;
@@ -453,6 +470,7 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 
     private async fetchCheerio(request: Request): Promise<CheerioAPI> {
+        // Votre code ici était déjà correct.
         const [, data] = await Application.scheduleRequest(request);
         const htmlStr = Application.arrayBufferToUTF8String(data);
         const dom = htmlparser2.parseDocument(htmlStr);
