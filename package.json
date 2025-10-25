@@ -1,6 +1,6 @@
 {
-    "name": "template-extensions",
-    "repositoryName": "Template Extensions (0.9)",
+    "name": "saw6-extensions",
+    "repositoryName": "Saw_6 Extensions (0.9)",
     "description": "Paperback extensions designed as templates to help developers get started quickly. Maintained by Inkdex.",
     "private": true,
     "type": "module",

@@ -20,9 +20,7 @@ export default {
     badges: [],
     developers: [
         {
-            name: "Celarye",
-            website: "https://celarye.dev",
-            github: "https://github.com/Celarye",
+            name: "Saw_6",
         },
     ],
 } satisfies ExtensionInfo;
