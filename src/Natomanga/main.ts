@@ -21,6 +21,10 @@ import {
     type SourceManga,
     type Tag,
     type TagSection,
+    CloudflareBypassRequestProviding,
+    CloudflareError,
+    Cookie,
+    CookieStorageInterceptor,
 } from "@paperback/types";
 import * as cheerio from "cheerio";
 import type { CheerioAPI } from "cheerio";
@@ -35,7 +39,8 @@ type NatomangaImplementation = SettingsFormProviding &
     DiscoverSectionProviding &
     SearchResultsProviding &
     MangaProviding &
-    ChapterProviding;
+    ChapterProviding &
+    CloudflareBypassRequestProviding;
 
 export class NatomangaExtension implements NatomangaImplementation {
     mainRateLimiter = new BasicRateLimiter("main", {
@@ -46,9 +51,14 @@ export class NatomangaExtension implements NatomangaImplementation {
 
     mainInterceptor = new MainInterceptor("main");
 
+    cookieStorageInterceptor = new CookieStorageInterceptor({
+        storage: "stateManager",
+    });
+
     async initialise(): Promise<void> {
         this.mainRateLimiter.registerInterceptor();
         this.mainInterceptor.registerInterceptor();
+        this.cookieStorageInterceptor.registerInterceptor();
     }
 
     async getSettingsForm(): Promise<Form> {
@@ -373,8 +383,30 @@ export class NatomangaExtension implements NatomangaImplementation {
         };
     }
 
+    async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
+        // Supprimer les anciens cookies
+        for (const cookie of this.cookieStorageInterceptor.cookies) {
+            this.cookieStorageInterceptor.deleteCookie(cookie);
+        }
+        
+        // Ajouter les nouveaux cookies
+        for (const cookie of cookies) {
+            if (cookie.expires && cookie.expires.getTime() <= Date.now()) {
+                continue;
+            }
+            this.cookieStorageInterceptor.setCookie(cookie);
+        }
+    }
+
+    checkCloudflareStatus(status: number): void {
+        if (status == 503 || status == 403) {
+            throw new CloudflareError({ url: baseUrl, method: "GET" });
+        }
+    }
+
     private async fetchCheerio(request: Request): Promise<CheerioAPI> {
-        const [, data] = await Application.scheduleRequest(request);
+        const [response, data] = await Application.scheduleRequest(request);
+        this.checkCloudflareStatus(response.status);
         const htmlStr = Application.arrayBufferToUTF8String(data);
         const dom = htmlparser2.parseDocument(htmlStr);
         return cheerio.load(dom);
