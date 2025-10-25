@@ -350,7 +350,10 @@ export class NatomangaExtension implements NatomangaImplementation {
             const chapterMatch = chapterTitle.match(
                 /chapter\s+(\d+(?:\.\d+)?)/i,
             );
-            const chapNum = chapterMatch && chapterMatch[1] ? parseFloat(chapterMatch[1]) : i + 1;
+            const chapNum =
+                chapterMatch && chapterMatch[1]
+                    ? parseFloat(chapterMatch[1])
+                    : i + 1;
 
             // Extract date
             const dateText = $el.find(".chapter-time").text().trim();
