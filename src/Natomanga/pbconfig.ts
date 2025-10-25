@@ -5,7 +5,7 @@ import {
 } from "@paperback/types";
 
 export default {
-    name: "Content Template",
+    name: "Natomanga",
     description:
         "Template that shows the functionality of content providing extensions.",
     version: "1.0.0-alpha.3",
