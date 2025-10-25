@@ -30,19 +30,14 @@ import { MainInterceptor } from "./network";
 
 const baseUrl = "https://www.natomanga.com";
 
-type NatoMetadata = {
-    page?: number;
-    collectedIds?: string[];
-};
-
-type NatomangaImplementation = SettingsFormProviding &
+type ContentTemplateImplementation = SettingsFormProviding &
     Extension &
     DiscoverSectionProviding &
     SearchResultsProviding &
     MangaProviding &
     ChapterProviding;
 
-export class NatomangaExtension implements NatomangaImplementation {
+export class ContentTemplateExtension implements ContentTemplateImplementation {
     mainRateLimiter = new BasicRateLimiter("main", {
         numberOfRequests: 15,
         bufferInterval: 10,
@@ -61,261 +56,233 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 
     async getDiscoverSections(): Promise<DiscoverSection[]> {
+        const discover_section_template1: DiscoverSection = {
+            id: "discover-section-template1",
+            title: "Popular Manga",
+            subtitle: "Most popular manga",
+            type: DiscoverSectionType.featured,
+        };
+
+        const discover_section_template2: DiscoverSection = {
+            id: "discover-section-template2",
+            title: "Latest Releases",
+            subtitle: "Recently updated",
+            type: DiscoverSectionType.prominentCarousel,
+        };
+
+        const discover_section_template3: DiscoverSection = {
+            id: "discover-section-template3",
+            title: "More Manga",
+            subtitle: "Browse more titles",
+            type: DiscoverSectionType.simpleCarousel,
+        };
+
         return [
-            {
-                id: "popular-manga",
-                title: "Popular Manga",
-                subtitle: "Most popular manga on the site",
-                type: DiscoverSectionType.prominentCarousel,
-            },
-            {
-                id: "latest-releases",
-                title: "Latest Manga Releases",
-                subtitle: "Recently updated manga",
-                type: DiscoverSectionType.chapterUpdates,
-            },
+            discover_section_template1,
+            discover_section_template2,
+            discover_section_template3,
         ];
     }
 
     async getDiscoverSectionItems(
         section: DiscoverSection,
-        metadata: NatoMetadata | undefined,
+        metadata: number | undefined,
     ): Promise<PagedResults<DiscoverSectionItem>> {
-        switch (section.id) {
-            case "popular-manga":
-                return this.scrapePopularManga();
-            case "latest-releases":
-                return this.scrapeLatestReleases(metadata);
-            default:
-                return { items: [] };
-        }
-    }
-
-    private async scrapePopularManga(): Promise<
-        PagedResults<DiscoverSectionItem>
-    > {
-        const request: Request = { url: baseUrl, method: "GET" };
-        const $ = await this.fetchCheerio(request);
-        const items: DiscoverSectionItem[] = [];
-
-        // ### CORRECTION ICI ###
-        // Ancien sélecteur: ".slide .owl-item .item"
-        $("div.slide-popular div.item-qfix").each((_i, el) => {
-            const $el = $(el);
-
-            // Le lien principal est sur l'image/le titre
-            const link = $el.find("a.tooltip").attr("href");
-            if (!link || link.includes("toffee.ai")) return;
-
-            const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
-            const imageUrl = $el.find("img").attr("src") ?? "";
-
-            // Vos sélecteurs internes étaient corrects
-            const title = $el.find(".slide-caption h3 a").text().trim();
-            const chapterLink = $el.find('.slide-caption a[href*="/chapter"]');
-            const supertitle = chapterLink.text().trim();
-
-            if (mangaId && title) {
-                items.push({
-                    mangaId,
-                    title,
-                    supertitle: supertitle || undefined,
-                    imageUrl,
-                    type: "featuredCarouselItem",
-                    metadata: undefined,
-                });
-            }
-        });
-
-        return { items, metadata: undefined };
-    }
-
-    private async scrapeLatestReleases(
-        metadata: NatoMetadata | undefined,
-    ): Promise<PagedResults<DiscoverSectionItem>> {
-        const page = metadata?.page ?? 1;
-        const collectedIds = metadata?.collectedIds ?? [];
+        void metadata;
 
         const request: Request = {
-            url: `${baseUrl}/manga-list/latest-manga?page=${page}`,
+            url: baseUrl,
             method: "GET",
         };
 
         const $ = await this.fetchCheerio(request);
         const items: DiscoverSectionItem[] = [];
 
-        // ### CORRECTION ICI ###
-        // Ancien sélecteur: ".doreamon .itemupdate.first"
-        $(".panel-content-genres .content-genres-item").each((_i, el) => {
-            const $el = $(el);
+        let type:
+            | "featuredCarouselItem"
+            | "simpleCarouselItem"
+            | "prominentCarouselItem";
 
-            // Ancien sélecteur: a.cover
-            const linkEl = $el.find("a.genres-item-name");
-            const link = linkEl.attr("href");
-            if (!link || link.includes("toffee.ai")) return;
+        switch (section.id) {
+            case "discover-section-template1":
+                type = "featuredCarouselItem";
+                // Sélecteur corrigé pour le carousel populaire
+                $(".slide .owl-carousel .item").each((_i, el) => {
+                    const $el = $(el);
+                    const link = $el.find("a").attr("href");
+                    if (!link || link.includes("toffee.ai")) return;
 
-            // Ancien sélecteur: h3 a
-            const title = linkEl.text().trim();
+                    const title = $el.find(".slide-caption h3 a").text().trim();
+                    const imageUrl = $el.find("img").attr("src") ?? "";
+                    const mangaId =
+                        link.split("/manga/")[1]?.split("?")[0] ?? "";
+                    const subtitle = $el
+                        .find('.slide-caption a[href*="/chapter"]')
+                        .text()
+                        .trim();
 
-            // Ancien sélecteur: img
-            const imageUrl =
-                $el.find("a.genres-item-img img").attr("src") ?? "";
-
-            const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
-
-            // Ancien sélecteur: li a
-            const latestChapterEl = $el.find("a.genres-item-chap");
-            const subtitle = latestChapterEl.text().trim();
-            const chapterHref = latestChapterEl.attr("href") ?? "";
-            const chapterId = chapterHref.split("/chapter-")[1] ?? "0";
-
-            if (mangaId && title && !collectedIds.includes(mangaId)) {
-                collectedIds.push(mangaId);
-                items.push({
-                    mangaId,
-                    title,
-                    subtitle: subtitle || undefined,
-                    imageUrl,
-                    type: "chapterUpdatesCarouselItem",
-                    chapterId,
-                    metadata: undefined,
+                    if (mangaId && title) {
+                        items.push({
+                            mangaId,
+                            title,
+                            subtitle: subtitle || undefined,
+                            imageUrl,
+                            type,
+                        });
+                    }
                 });
-            }
-        });
+                break;
 
-        const hasNextPage = !!$(".pagination .current").next("a").length;
+            case "discover-section-template2":
+                type = "prominentCarouselItem";
+                // Sélecteur corrigé pour la liste
+                $(".list-comic-item-wrap")
+                    .slice(0, 10)
+                    .each((_i, el) => {
+                        const $el = $(el);
+                        const link = $el.find("a.list-story-item").attr("href");
+                        if (!link || link.includes("toffee.ai")) return;
 
-        return {
-            items,
-            metadata: hasNextPage
-                ? { page: page + 1, collectedIds }
-                : undefined,
-        };
+                        const title = $el.find("h3 a").first().text().trim();
+                        const imageUrl =
+                            $el.find("img").attr("src") ??
+                            $el.find("img").attr("data-src") ??
+                            "";
+                        const mangaId =
+                            link.split("/manga/")[1]?.split("?")[0] ?? "";
+                        const subtitle = $el
+                            .find("a.list-story-item-wrap-chapter")
+                            .text()
+                            .trim();
+
+                        if (mangaId && title) {
+                            items.push({
+                                mangaId,
+                                title,
+                                subtitle: subtitle || undefined,
+                                imageUrl,
+                                type,
+                            });
+                        }
+                    });
+                break;
+
+            case "discover-section-template3":
+                type = "simpleCarouselItem";
+                // Sélecteur corrigé pour la liste
+                $(".list-comic-item-wrap")
+                    .slice(10, 20)
+                    .each((_i, el) => {
+                        const $el = $(el);
+                        const link = $el.find("a.list-story-item").attr("href");
+                        if (!link || link.includes("toffee.ai")) return;
+
+                        const title = $el.find("h3 a").first().text().trim();
+                        const imageUrl =
+                            $el.find("img").attr("src") ??
+                            $el.find("img").attr("data-src") ??
+                            "";
+                        const mangaId =
+                            link.split("/manga/")[1]?.split("?")[0] ?? "";
+                        const subtitle = $el
+                            .find("a.list-story-item-wrap-chapter")
+                            .text()
+                            .trim();
+
+                        if (mangaId && title) {
+                            items.push({
+                                mangaId,
+                                title,
+                                subtitle: subtitle || undefined,
+                                imageUrl,
+                                type,
+                            });
+                        }
+                    });
+                break;
+        }
+
+        return { items };
     }
 
     async getSearchFilters(): Promise<SearchFilter[]> {
-        // Ce code est correct, mais les filtres ne sont pas utilisés dans getSearchResults
-        // Vous pourrez l'ajouter plus tard si vous le souhaitez.
         return [
             {
-                id: "status",
+                id: "search-filter-template",
                 type: "dropdown",
                 options: [
-                    { id: "all", value: "All" },
-                    { id: "ongoing", value: "Ongoing" },
-                    { id: "completed", value: "Completed" },
+                    { id: "include", value: "include" },
+                    { id: "exclude", value: "exclude" },
                 ],
-                value: "all",
-                title: "Status",
+                value: "include",
+                title: "Search Filter Template",
             },
         ];
     }
 
     async getSearchResults(
         query: SearchQuery,
-        metadata?: NatoMetadata,
+        metadata?: number,
     ): Promise<PagedResults<SearchResultItem>> {
-        const page = metadata?.page ?? 1;
+        void metadata;
 
         const searchQuery = query.title.trim().replace(/\s+/g, "_");
-        const request: Request = {
-            url: `${baseUrl}/search/story/${searchQuery}?page=${page}`,
-            method: "GET",
+        const request = {
+            url: `${baseUrl}/search/story/${searchQuery}`,
+            method: "GET" as const,
         };
 
         const $ = await this.fetchCheerio(request);
-        const items: SearchResultItem[] = [];
+        const results: PagedResults<SearchResultItem> = { items: [] };
 
-        // ### CORRECTION ICI ###
-        // Ancien sélecteur: ".doreamon .itemupdate.first"
-        $(".panel-content-genres .content-genres-item").each((_i, el) => {
+        $(".doreamon .itemupdate.first").each((_i, el) => {
             const $el = $(el);
-
-            // Ancien sélecteur: a.cover
-            const linkEl = $el.find("a.genres-item-name");
-            const link = linkEl.attr("href");
+            const link = $el.find("a.cover").attr("href");
             if (!link || link.includes("toffee.ai")) return;
 
-            // Ancien sélecteur: h3 a
-            const title = linkEl.text().trim();
-
-            // Ancien sélecteur: img
+            const title = $el.find("h3 a").first().text().trim();
             const imageUrl =
-                $el.find("a.genres-item-img img").attr("src") ?? "";
-
+                $el.find("img").attr("src") ??
+                $el.find("img").attr("data-src") ??
+                "";
             const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
-
-            // Ancien sélecteur: li a
-            const latestChapter = $el.find("a.genres-item-chap").text().trim();
+            const subtitle = $el.find("li").first().find("a").text().trim();
 
             if (mangaId && title) {
-                items.push({
+                results.items.push({
                     mangaId,
                     title,
-                    subtitle: latestChapter || undefined,
+                    subtitle: subtitle || undefined,
                     imageUrl,
                 });
             }
         });
 
-        const hasNextPage = !!$(".pagination .current").next("a").length;
-
-        return {
-            items,
-            metadata: hasNextPage ? { page: page + 1 } : undefined,
-        };
+        return results;
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
-        // Votre code ici était déjà correct.
-        const url = `${baseUrl}/manga/${mangaId}`;
-        const request: Request = { url, method: "GET" };
+        const request: Request = {
+            url: `${baseUrl}/manga/${mangaId}`,
+            method: "GET",
+        };
+
         const $ = await this.fetchCheerio(request);
 
         const title = $(".story-info-right h1").text().trim() || mangaId;
         const imageUrl = $(".info-image img").attr("src") ?? "";
         const description = $(".panel-story-info-description").text().trim();
 
-        const altTitles: string[] = [];
         const tags: Tag[] = [];
-        let status: "ONGOING" | "COMPLETED" | "UNKNOWN" = "UNKNOWN";
-        let author = "";
-        let rating = 0;
-
-        $(".variations-tableInfo .table-label").each((_i, el) => {
-            const label = $(el).text().trim().toLowerCase();
-            const valueEl = $(el).next(".table-value");
-
-            if (label.includes("alternative")) {
-                const alts = valueEl.text().trim().split(";");
-                altTitles.push(...alts.map((a) => a.trim()).filter((a) => a));
-            } else if (label.includes("author")) {
-                author = valueEl.text().trim();
-            } else if (label.includes("status")) {
-                const statusText = valueEl.text().trim().toLowerCase();
-                if (statusText.includes("ongoing")) {
-                    status = "ONGOING";
-                } else if (statusText.includes("completed")) {
-                    status = "COMPLETED";
-                }
-            } else if (label.includes("genre")) {
-                valueEl.find("a").each((_j, genreEl) => {
-                    const genreText = $(genreEl).text().trim();
-                    if (genreText) {
-                        tags.push({
-                            id: genreText.toLowerCase().replace(/\s+/g, "-"),
-                            title: genreText,
-                        });
-                    }
+        $(".variations-tableInfo .table-value a.a-h").each((_i, el) => {
+            const genreText = $(el).text().trim();
+            if (genreText) {
+                tags.push({
+                    id: genreText.toLowerCase().replace(/\s+/g, "-"),
+                    title: genreText,
                 });
             }
         });
-
-        // Extract rating
-        const ratingText = $(".rate-view .rating").text().trim();
-        if (ratingText) {
-            rating = parseFloat(ratingText);
-        }
 
         const tagSections: TagSection[] = [];
         if (tags.length > 0) {
@@ -330,13 +297,11 @@ export class NatomangaExtension implements NatomangaImplementation {
             mangaId,
             mangaInfo: {
                 primaryTitle: title,
-                secondaryTitles: altTitles,
+                secondaryTitles: [],
                 thumbnailUrl: imageUrl,
-                synopsis: description,
+                synopsis: description || "No synopsis available.",
                 contentRating: ContentRating.EVERYONE,
-                status,
-                author,
-                rating,
+                status: "UNKNOWN",
                 tagGroups: tagSections,
             },
         };
@@ -346,11 +311,14 @@ export class NatomangaExtension implements NatomangaImplementation {
         sourceManga: SourceManga,
         sinceDate?: Date,
     ): Promise<Chapter[]> {
-        // Votre code ici était déjà correct.
-        const url = `${baseUrl}/manga/${sourceManga.mangaId}`;
-        const request: Request = { url, method: "GET" };
-        const $ = await this.fetchCheerio(request);
+        void sinceDate;
 
+        const request: Request = {
+            url: `${baseUrl}/manga/${sourceManga.mangaId}`,
+            method: "GET",
+        };
+
+        const $ = await this.fetchCheerio(request);
         const chapters: Chapter[] = [];
 
         $(".row-content-chapter li").each((i, el) => {
@@ -361,8 +329,6 @@ export class NatomangaExtension implements NatomangaImplementation {
 
             const chapterId = chapterLink.split("/chapter-")[1] ?? `${i}`;
             const chapterTitle = $el.find("a").text().trim();
-
-            // Extract chapter number from title
             const chapterMatch = chapterTitle.match(
                 /chapter\s+(\d+(?:\.\d+)?)/i,
             );
@@ -371,44 +337,28 @@ export class NatomangaExtension implements NatomangaImplementation {
                     ? parseFloat(chapterMatch[1])
                     : i + 1;
 
-            // Extract date
-            const dateText = $el.find(".chapter-time").text().trim();
-            let publishDate: Date | undefined;
-            if (dateText) {
-                publishDate = this.parseDate(dateText);
-            }
-
             chapters.push({
                 chapterId,
                 sourceManga,
                 langCode: "EN",
                 chapNum,
                 title: chapterTitle,
-                publishDate,
                 volume: undefined,
             });
         });
 
-        // If sinceDate is provided, filter out chapters published on or before that date.
-        let result = chapters;
-        if (sinceDate) {
-            result = chapters.filter((ch) => {
-                return ch.publishDate ? ch.publishDate > sinceDate : false;
-            });
-        }
-
-        return result.sort((a, b) => b.chapNum - a.chapNum);
+        return chapters;
     }
 
     async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
-        // Votre code ici était déjà correct.
-        const url = `${baseUrl}/manga/${chapter.sourceManga.mangaId}/chapter-${chapter.chapterId}`;
-        const request: Request = { url, method: "GET" };
-        const $ = await this.fetchCheerio(request);
+        const request: Request = {
+            url: `${baseUrl}/manga/${chapter.sourceManga.mangaId}/chapter-${chapter.chapterId}`,
+            method: "GET",
+        };
 
+        const $ = await this.fetchCheerio(request);
         const pages: string[] = [];
 
-        // Images are directly in .container-chapter-reader
         $(".container-chapter-reader img").each((_i, el) => {
             const imgUrl = $(el).attr("src") ?? $(el).attr("data-src");
             if (imgUrl) {
@@ -423,54 +373,7 @@ export class NatomangaExtension implements NatomangaImplementation {
         };
     }
 
-    getMangaShareUrl(mangaId: string): string {
-        return `${baseUrl}/manga/${mangaId}`;
-    }
-
-    private parseDate(dateText: string): Date {
-        // Votre code ici était déjà correct.
-        const now = new Date();
-
-        if (!dateText?.trim()) return now;
-
-        // Handle relative dates like "1 hour ago", "2 days ago"
-        const relativeMatch = dateText.match(
-            /(\d+)\s+(second|minute|hour|day|week|month)s?\s+ago/i,
-        );
-        if (relativeMatch) {
-            const value = parseInt(relativeMatch[1] ?? "0");
-            const unit = (relativeMatch[2] ?? "").toLowerCase();
-
-            switch (unit) {
-                case "second":
-                    now.setSeconds(now.getSeconds() - value);
-                    break;
-                case "minute":
-                    now.setMinutes(now.getMinutes() - value);
-                    break;
-                case "hour":
-                    now.setHours(now.getHours() - value);
-                    break;
-                case "day":
-                    now.setDate(now.getDate() - value);
-                    break;
-                case "week":
-                    now.setDate(now.getDate() - value * 7);
-                    break;
-                case "month":
-                    now.setMonth(now.getMonth() - value);
-                    break;
-            }
-            return now;
-        }
-
-        // Try parsing as regular date
-        const parsedDate = new Date(dateText);
-        return isNaN(parsedDate.getTime()) ? now : parsedDate;
-    }
-
     private async fetchCheerio(request: Request): Promise<CheerioAPI> {
-        // Votre code ici était déjà correct.
         const [, data] = await Application.scheduleRequest(request);
         const htmlStr = Application.arrayBufferToUTF8String(data);
         const dom = htmlparser2.parseDocument(htmlStr);
@@ -478,4 +381,4 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 }
 
-export const Natomanga = new NatomangaExtension();
+export const ContentTemplate = new ContentTemplateExtension();
