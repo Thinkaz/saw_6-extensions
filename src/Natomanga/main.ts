@@ -370,7 +370,15 @@ export class NatomangaExtension implements NatomangaImplementation {
             });
         });
 
-        return chapters.sort((a, b) => b.chapNum - a.chapNum);
+        // If sinceDate is provided, filter out chapters published on or before that date.
+        let result = chapters;
+        if (sinceDate) {
+            result = chapters.filter((ch) => {
+                return ch.publishDate ? ch.publishDate > sinceDate : false;
+            });
+        }
+
+        return result.sort((a, b) => b.chapNum - a.chapNum);
     }
 
     async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
