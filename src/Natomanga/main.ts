@@ -30,14 +30,14 @@ import { MainInterceptor } from "./network";
 
 const baseUrl = "https://www.natomanga.com";
 
-type ContentTemplateImplementation = SettingsFormProviding &
+type NatomangaImplementation = SettingsFormProviding &
     Extension &
     DiscoverSectionProviding &
     SearchResultsProviding &
     MangaProviding &
     ChapterProviding;
 
-export class ContentTemplateExtension implements ContentTemplateImplementation {
+export class NatomangaExtension implements NatomangaImplementation {
     mainRateLimiter = new BasicRateLimiter("main", {
         numberOfRequests: 15,
         bufferInterval: 10,
@@ -381,4 +381,4 @@ export class ContentTemplateExtension implements ContentTemplateImplementation {
     }
 }
 
-export const ContentTemplate = new ContentTemplateExtension();
+export const Natomanga = new NatomangaExtension();
