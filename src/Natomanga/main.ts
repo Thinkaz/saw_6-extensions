@@ -286,12 +286,13 @@ export class NatomangaExtension implements NatomangaImplementation {
             const chapterMatch =
                 chapterHref.match(/chapter-(\d+(?:\.\d+)?)/i) ||
                 chapterTitle.match(/chapter\s+(\d+(?:\.\d+)?)/i);
-            const chapNum = chapterMatch
-                ? parseFloat(chapterMatch[1])
-                : chapters.length + 1;
-            const chapterId = chapterMatch
-                ? chapterMatch[1]
-                : `${chapters.length}`;
+            let chapNum = chapters.length + 1;
+            let chapterId = `${chapters.length}`;
+
+            if (Array.isArray(chapterMatch) && typeof chapterMatch[1] === "string") {
+                chapNum = parseFloat(chapterMatch[1]);
+                chapterId = chapterMatch[1];
+            }
 
             if (chapterId && !chapterHref.includes("toffee.ai")) {
                 chapters.push({
@@ -363,7 +364,6 @@ export class NatomangaExtension implements NatomangaImplementation {
                     mangaId,
                     imageUrl,
                     title,
-                    subtitle: subtitle || undefined,
                 });
             }
         });
