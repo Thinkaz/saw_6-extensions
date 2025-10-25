@@ -1,15 +1,11 @@
 import {
     BasicRateLimiter,
-    CloudflareError,
     ContentRating,
-    CookieStorageInterceptor,
     DiscoverSectionType,
     Form,
     type Chapter,
     type ChapterDetails,
     type ChapterProviding,
-    type CloudflareBypassRequestProviding,
-    type Cookie,
     type DiscoverSection,
     type DiscoverSectionItem,
     type DiscoverSectionProviding,
@@ -25,6 +21,10 @@ import {
     type SourceManga,
     type Tag,
     type TagSection,
+    type CloudflareBypassRequestProviding,
+    CloudflareError,
+    type Cookie,
+    CookieStorageInterceptor,
 } from "@paperback/types";
 import * as cheerio from "cheerio";
 import type { CheerioAPI } from "cheerio";
@@ -384,7 +384,7 @@ export class NatomangaExtension implements NatomangaImplementation {
         for (const cookie of this.cookieStorageInterceptor.cookies) {
             this.cookieStorageInterceptor.deleteCookie(cookie);
         }
-
+        
         for (const cookie of cookies) {
             if (cookie.expires && cookie.expires.getTime() <= Date.now()) {
                 continue;
@@ -395,19 +395,17 @@ export class NatomangaExtension implements NatomangaImplementation {
 
     // MODIFICATION ICI : Passer l'URL de la requête qui a échoué
     checkCloudflareStatus(request: Request, status: number): void {
-        // If Cloudflare returns a challenge status, throw the CloudflareError
-        // and pass the original request object as the resolutionRequest.
-        // The CloudflareError implementation expects the original request
-        // (not just a subset like {url, method}). Passing the full request
-        // lets the caller retry the exact request after bypass resolution.
-        if (status === 503 || status === 403) {
-            throw new CloudflareError(request);
+        if (status == 503 || status == 403) {
+            throw new CloudflareError({ 
+                url: request.url,  // Utiliser l'URL de la requête qui a échoué
+                method: request.method 
+            });
         }
     }
 
     private async fetchCheerio(request: Request): Promise<CheerioAPI> {
         const [response, data] = await Application.scheduleRequest(request);
-        this.checkCloudflareStatus(request, response.status); // Passer la requête
+        this.checkCloudflareStatus(request, response.status);  // Passer la requête
         const htmlStr = Application.arrayBufferToUTF8String(data);
         const dom = htmlparser2.parseDocument(htmlStr);
         return cheerio.load(dom);
