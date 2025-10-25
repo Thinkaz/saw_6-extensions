@@ -74,12 +74,6 @@ export class NatomangaExtension implements NatomangaImplementation {
                 subtitle: "Recently updated manga",
                 type: DiscoverSectionType.chapterUpdates,
             },
-            {
-                id: "genres",
-                title: "Browse by Genre",
-                subtitle: "Explore different genres",
-                type: DiscoverSectionType.genres,
-            },
         ];
     }
 
@@ -92,8 +86,6 @@ export class NatomangaExtension implements NatomangaImplementation {
                 return this.scrapePopularManga();
             case "latest-releases":
                 return this.scrapeLatestReleases(metadata);
-            case "genres":
-                return this.scrapeGenres();
             default:
                 return { items: [] };
         }
@@ -188,41 +180,6 @@ export class NatomangaExtension implements NatomangaImplementation {
                 ? { page: page + 1, collectedIds }
                 : undefined,
         };
-    }
-
-    private async scrapeGenres(): Promise<PagedResults<DiscoverSectionItem>> {
-        const request: Request = { url: baseUrl, method: "GET" };
-        const $ = await this.fetchCheerio(request);
-        const items: DiscoverSectionItem[] = [];
-
-        $(".panel-category table tr").each((i, el) => {
-            const $el = $(el);
-
-            if ($el.hasClass("bordertop") || i === 0) return;
-
-            $el.find("td a").each((_j, link) => {
-                const $link = $(link);
-                const href = $link.attr("href");
-
-                if (!href || !href.includes("/genre/") || href.includes("?"))
-                    return;
-
-                const genreName = $link.text().trim();
-                const genreId = href.split("/genre/")[1] ?? "";
-
-                if (genreId && genreName && items.length < 30) {
-                    items.push({
-                        mangaId: genreId,
-                        title: genreName,
-                        imageUrl: "",
-                        type: "genresCarouselItem",
-                        metadata: undefined,
-                    });
-                }
-            });
-        });
-
-        return { items, metadata: undefined };
     }
 
     async getSearchFilters(): Promise<SearchFilter[]> {
@@ -393,7 +350,7 @@ export class NatomangaExtension implements NatomangaImplementation {
             const chapterMatch = chapterTitle.match(
                 /chapter\s+(\d+(?:\.\d+)?)/i,
             );
-            const chapNum = chapterMatch ? parseFloat(chapterMatch[1]) : i + 1;
+            const chapNum = chapterMatch && chapterMatch[1] ? parseFloat(chapterMatch[1]) : i + 1;
 
             // Extract date
             const dateText = $el.find(".chapter-time").text().trim();
