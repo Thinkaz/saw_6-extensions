@@ -37,7 +37,7 @@ import { SettingsForm } from "./forms";
 import { MainInterceptor } from "./network";
 
 // Should match the capabilities which you defined in pbconfig.ts
-type NatomangaImplementation = SettingsFormProviding &
+type ContentTemplateImplementation = SettingsFormProviding &
     Extension &
     DiscoverSectionProviding &
     SearchResultsProviding &
@@ -45,7 +45,7 @@ type NatomangaImplementation = SettingsFormProviding &
     ChapterProviding;
 
 // Main extension class
-export class NatomangaExtension implements NatomangaImplementation {
+export class ContentTemplateExtension implements ContentTemplateImplementation {
     // Implementation of the main rate limiter
     mainRateLimiter = new BasicRateLimiter("main", {
         numberOfRequests: 15,
@@ -374,4 +374,4 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 }
 
-export const Natomanga = new NatomangaExtension();
+export const ContentTemplate = new ContentTemplateExtension();
