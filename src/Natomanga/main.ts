@@ -395,11 +395,13 @@ export class NatomangaExtension implements NatomangaImplementation {
 
     // MODIFICATION ICI : Passer l'URL de la requête qui a échoué
     checkCloudflareStatus(request: Request, status: number): void {
-        if (status == 503 || status == 403) {
-            throw new CloudflareError({
-                url: request.url, // Utiliser l'URL de la requête qui a échoué
-                method: request.method,
-            });
+        // If Cloudflare returns a challenge status, throw the CloudflareError
+        // and pass the original request object as the resolutionRequest.
+        // The CloudflareError implementation expects the original request
+        // (not just a subset like {url, method}). Passing the full request
+        // lets the caller retry the exact request after bypass resolution.
+        if (status === 503 || status === 403) {
+            throw new CloudflareError(request);
         }
     }
 
