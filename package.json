@@ -1,7 +1,7 @@
 {
-    "name": "saw6-extensions",
+    "name": "saw_6-extensions",
     "repositoryName": "Saw_6 Extensions (0.9)",
-    "description": "Paperback extensions designed as templates to help developers get started quickly. Maintained by Inkdex.",
+    "description": "Saw_6 Extensions for Paperback App - Enjoy!",
     "private": true,
     "type": "module",
     "scripts": {
