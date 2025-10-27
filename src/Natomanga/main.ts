@@ -159,11 +159,17 @@ export class NatomangaExtension implements NatomangaImplementation {
         if (lastPageMatch) {
             const lastPage = parseInt(lastPageMatch[1] ?? "1");
             hasNextPage = currentPageNum < lastPage;
+            console.log(
+                `[Natomanga] Section ${section.id} - Page ${currentPageNum}/${lastPage} - Items: ${items.length} - HasNext: ${hasNextPage}`,
+            );
         } else {
             // Fallback: S'il y a un lien avec page=X+1, alors il y a une page suivante
             const nextPageExists =
                 $(`.group_page a[href*="page=${page + 1}"]`).length > 0;
             hasNextPage = nextPageExists && items.length > 0;
+            console.log(
+                `[Natomanga] Section ${section.id} - Page ${page} - Items: ${items.length} - HasNext: ${hasNextPage} (fallback)`,
+            );
         }
 
         // Sécurité: Si pas d'items du tout, pas de page suivante
@@ -249,16 +255,18 @@ export class NatomangaExtension implements NatomangaImplementation {
 
         const $ = await this.fetchCheerio(request);
 
-        // Titre principal
+        // Titre principal - structure manga-info-top
         const title =
-            $(".manga-info-text h1").first().text().trim() ||
-            $(".story-info-right h1").text().trim() ||
+            $(".manga-info-text h1, .manga-info-top h1")
+                .first()
+                .text()
+                .trim() ||
+            $("h1").first().text().trim() ||
             mangaId;
 
-        // Image
+        // Image - structure manga-info-pic
         const rawImageUrl =
-            $(".manga-info-pic img").attr("src") ??
-            $(".info-image img").attr("src") ??
+            $(".manga-info-pic img, .manga-info-top img").first().attr("src") ??
             "";
         const imageUrl = this.fixImageUrl(rawImageUrl);
         const validImageUrl =
@@ -266,11 +274,19 @@ export class NatomangaExtension implements NatomangaImplementation {
                 ? imageUrl
                 : `${baseUrl}/images/default_nato.webp`;
 
-        // Description (pas toujours présente)
-        const description =
-            $("#panel-story-info-description").text().trim() ||
-            $(".panel-story-info-description").text().trim() ||
-            "";
+        // Auteur
+        let author = "Unknown";
+        $(".manga-info-text li").each((_i, el) => {
+            const text = $(el).text();
+            if (text.includes("Author(s)")) {
+                author = text
+                    .replace("Author(s) :", "")
+                    .replace("Author(s):", "")
+                    .trim();
+            }
+        });
+
+        const description = $("#contentBox").text().trim() || "";
 
         // Status
         let status: "ONGOING" | "COMPLETED" | "UNKNOWN" = "UNKNOWN";
@@ -287,9 +303,7 @@ export class NatomangaExtension implements NatomangaImplementation {
 
         // Genres/Tags
         const tags: Tag[] = [];
-        $(
-            ".manga-info-text li.genres a, .variations-tableInfo .table-value a.a-h",
-        ).each((_i, el) => {
+        $(".manga-info-text li.genres a").each((_i, el) => {
             const genreText = $(el).text().trim();
             if (genreText) {
                 tags.push({
@@ -308,13 +322,16 @@ export class NatomangaExtension implements NatomangaImplementation {
             });
         }
 
+        console.log(`[Natomanga] Manga details loaded: ${title} by ${author}`);
+
         return {
             mangaId,
             mangaInfo: {
                 primaryTitle: title,
                 secondaryTitles: [],
                 thumbnailUrl: validImageUrl,
-                synopsis: description || "No synopsis available.",
+                synopsis: description || "No description available.",
+                author: author !== "Unknown" ? author : undefined,
                 contentRating: ContentRating.EVERYONE,
                 status,
                 tagGroups: tagSections,
@@ -343,6 +360,8 @@ export class NatomangaExtension implements NatomangaImplementation {
 
             if (!chapterLink) return;
 
+            // Extraire le chapterId de l'URL
+            // Format: https://www.natomanga.com/manga/boyish-girlfriend/chapter-30
             const chapterIdMatch = chapterLink.match(/\/chapter-([^/?]+)/);
             const chapterId = chapterIdMatch?.[1] ?? `${i}`;
 
@@ -399,29 +418,42 @@ export class NatomangaExtension implements NatomangaImplementation {
 
         const pages: string[] = [];
 
+        // Extraire la liste des CDN du script (comme dans Elftoon)
         let cdns: string[] = [];
-        const scriptContent = $("head").html() ?? "";
-        const scriptMatch = scriptContent.match(/var cdns = \[(.*?)\];/s);
+        $("script").each((_i, scriptElement) => {
+            const scriptContent = $(scriptElement).html() || "";
 
-        if (scriptMatch && scriptMatch[1]) {
-            try {
-                const cdnString = `[${scriptMatch[1].replace(/'/g, '"')}]`;
-                const parsed = JSON.parse(cdnString) as unknown;
-                if (
-                    Array.isArray(parsed) &&
-                    parsed.every((p) => typeof p === "string")
-                ) {
-                    cdns = parsed;
+            // Chercher "var cdns = [...]"
+            const cdnsMatch = scriptContent.match(
+                /var\s+cdns\s*=\s*\[(.*?)\];/s,
+            );
+            if (cdnsMatch && cdnsMatch[1]) {
+                try {
+                    // Nettoyer et parser les CDN
+                    const cdnString = `[${cdnsMatch[1].replace(/'/g, '"')}]`;
+                    const parsed = JSON.parse(cdnString) as unknown;
+                    if (
+                        Array.isArray(parsed) &&
+                        parsed.every((p) => typeof p === "string")
+                    ) {
+                        cdns = parsed;
+                        console.log(
+                            `[Natomanga] Found ${cdns.length} CDNs for chapter ${chapter.chapterId}`,
+                        );
+                    }
+                } catch (e) {
+                    console.error("[Natomanga] Failed to parse CDN list:", e);
                 }
-            } catch (e) {
-                console.error("Failed to parse CDN list:", e);
             }
-        }
+        });
 
+        // Extraire toutes les images du container
         $(".container-chapter-reader img").each((_i, el) => {
-            let imgUrl = $(el).attr("src") ?? $(el).attr("data-src");
+            let imgUrl = $(el).attr("src") ?? $(el).attr("data-src") ?? "";
+
             if (!imgUrl) return;
 
+            // Appliquer le remplacement CDN si disponible
             if (
                 cdns.length > 0 &&
                 imageServerIndex >= 0 &&
@@ -429,14 +461,32 @@ export class NatomangaExtension implements NatomangaImplementation {
             ) {
                 const targetCdn = cdns[imageServerIndex];
                 if (targetCdn) {
+                    // Remplacer tous les CDN par le CDN cible
                     for (const cdnUrl of cdns) {
-                        imgUrl = imgUrl.replace(cdnUrl, targetCdn);
+                        if (imgUrl.includes(cdnUrl)) {
+                            imgUrl = imgUrl.replace(cdnUrl, targetCdn);
+                            break;
+                        }
                     }
                 }
             }
 
-            pages.push(this.fixImageUrl(imgUrl));
+            // Correction des URLs relatives
+            const finalUrl = this.fixImageUrl(imgUrl);
+
+            // Vérifier que l'URL est valide
+            if (finalUrl && finalUrl.startsWith("http")) {
+                pages.push(finalUrl);
+            }
         });
+
+        console.log(
+            `[Natomanga] Chapter ${chapter.chapterId} - Found ${pages.length} pages`,
+        );
+
+        if (pages.length === 0) {
+            throw new Error(`No images found for chapter ${chapter.chapterId}`);
+        }
 
         return {
             id: chapter.chapterId,
