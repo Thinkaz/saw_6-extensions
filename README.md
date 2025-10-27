@@ -44,7 +44,7 @@ Need help? Check out our [Support Guidelines][support-guidelines] in the [regist
 Want to contribute? Read the [Contributing Guidelines][contributing-guidelines] in the [registry repository][registry-repository] to get started.
 
 [registry-installation-page]: https://inkdex.github.io/installation
-[repository-installation-page]: https://thinkaz.github.io/saw6-template/0.9/stable
+[repository-installation-page]: https://thinkaz.github.io/saw6-extentions/0.9/stable
 [support-guidelines]: https://github.com/inkdex/extensions/blob/master/.github/SUPPORT.md
 [registry-repository]: https://github.com/inkdex/extensions
 [contributing-guidelines]: https://github.com/inkdex/extensions/blob/master/.github/CONTRIBUTING.md
