@@ -1,5 +1,5 @@
 {
-  "buildTime": "2025-10-27T11:47:51.462Z",
+  "buildTime": "2025-10-27T12:07:15.441Z",
   "builtWith": {
     "toolchain": "1.0.0-alpha.57",
     "types": "1.0.0-alpha.57"
@@ -12,7 +12,7 @@
     {
       "name": "Natomanga",
       "description": "Template that shows the functionality of content providing extensions.",
-      "version": "1.0.0-alpha.2",
+      "version": "1.0.0-alpha.3",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
