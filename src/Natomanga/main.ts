@@ -440,9 +440,16 @@ export class NatomangaExtension implements NatomangaImplementation {
             }
         });
 
-        // Extraire toutes les images du container
+        // Extraire toutes les images du container, en excluant les ads
         $(".container-chapter-reader img").each((index, el) => {
             const $img = $(el);
+
+            // Skip images inside ads-contain divs
+            if ($img.closest(".ads-contain").length > 0) {
+                console.log(`[Natomanga] Skipped ad image at index ${index}`);
+                return;
+            }
+
             let imgUrl = $img.attr("src") ?? $img.attr("data-src") ?? "";
 
             // Skip si l'URL est vide
@@ -505,7 +512,7 @@ export class NatomangaExtension implements NatomangaImplementation {
         return {
             id: chapter.chapterId,
             mangaId: chapter.sourceManga.mangaId,
-            pages,
+            pages: pages,
         };
     }
 
