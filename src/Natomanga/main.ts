@@ -145,7 +145,6 @@ export class NatomangaExtension implements NatomangaImplementation {
             }
         });
 
-        // Détection de pagination basée sur le HTML réel
         let hasNextPage = false;
 
         const currentPageText = $(".group_page a.page_select").text().trim();
@@ -157,16 +156,12 @@ export class NatomangaExtension implements NatomangaImplementation {
         if (lastPageMatch) {
             const lastPage = parseInt(lastPageMatch[1] ?? "1");
             hasNextPage = currentPageNum < lastPage;
-            console.log();
         } else {
-            // Fallback: S'il y a un lien avec page=X+1, alors il y a une page suivante
             const nextPageExists =
                 $(`.group_page a[href*="page=${page + 1}"]`).length > 0;
             hasNextPage = nextPageExists && items.length > 0;
-            console.log();
         }
 
-        // Sécurité: Si pas d'items du tout, pas de page suivante
         if (items.length === 0) {
             hasNextPage = false;
         }
@@ -200,7 +195,6 @@ export class NatomangaExtension implements NatomangaImplementation {
         const $ = await this.fetchCheerio(request);
         const results: SearchResultItem[] = [];
 
-        // Sélecteur pour les résultats de recherche
         $(".panel_story_list .story_item").each((_i, el) => {
             const $el = $(el);
             const link = $el.find("a").first().attr("href");
@@ -231,7 +225,6 @@ export class NatomangaExtension implements NatomangaImplementation {
             }
         });
 
-        // Vérifier s'il y a une page suivante
         const hasNextPage =
             $(".panel_page_number .group_page a.page_last").length > 0;
 
@@ -249,7 +242,6 @@ export class NatomangaExtension implements NatomangaImplementation {
 
         const $ = await this.fetchCheerio(request);
 
-        // Titre principal - structure manga-info-top
         const title =
             $(".manga-info-text h1, .manga-info-top h1")
                 .first()
@@ -258,7 +250,6 @@ export class NatomangaExtension implements NatomangaImplementation {
             $("h1").first().text().trim() ||
             mangaId;
 
-        // Image - structure manga-info-pic
         const rawImageUrl =
             $(".manga-info-pic img, .manga-info-top img").first().attr("src") ??
             "";
@@ -268,7 +259,6 @@ export class NatomangaExtension implements NatomangaImplementation {
                 ? imageUrl
                 : `${baseUrl}/images/default_nato.webp`;
 
-        // Auteur
         let author = "Unknown";
         $(".manga-info-text li").each((_i, el) => {
             const text = $(el).text();
@@ -282,7 +272,6 @@ export class NatomangaExtension implements NatomangaImplementation {
 
         const description = $("#contentBox").text().trim() || "";
 
-        // Status
         let status: "ONGOING" | "COMPLETED" | "UNKNOWN" = "UNKNOWN";
         $(".manga-info-text li").each((_i, el) => {
             const text = $(el).text().trim();
@@ -295,7 +284,6 @@ export class NatomangaExtension implements NatomangaImplementation {
             }
         });
 
-        // Genres/Tags
         const tags: Tag[] = [];
         $(".manga-info-text li.genres a").each((_i, el) => {
             const genreText = $(el).text().trim();
@@ -347,21 +335,17 @@ export class NatomangaExtension implements NatomangaImplementation {
         const $ = await this.fetchCheerio(request);
         const chapters: Chapter[] = [];
 
-        // Sélecteur pour les chapitres
         $(".chapter-list .row, .row-content-chapter li").each((i, el) => {
             const $el = $(el);
             const chapterLink = $el.find("a").first().attr("href");
 
             if (!chapterLink) return;
 
-            // Extraire le chapterId de l'URL
-            // Format: https://www.natomanga.com/manga/boyish-girlfriend/chapter-30
             const chapterIdMatch = chapterLink.match(/\/chapter-([^/?]+)/);
             const chapterId = chapterIdMatch?.[1] ?? `${i}`;
 
             const chapterTitle = $el.find("a").first().text().trim();
 
-            // Extraction du numéro de chapitre
             const chapterMatch = chapterId.match(/^(\d+(?:\.\d+)?)/);
             const chapNum = chapterMatch?.[1]
                 ? parseFloat(chapterMatch[1])
@@ -389,7 +373,6 @@ export class NatomangaExtension implements NatomangaImplementation {
         const cookieDomainMatch = chapterUrl.match(/(https?:\/\/[^/]+)/);
         const cookieDomain = cookieDomainMatch ? cookieDomainMatch[0] : baseUrl;
 
-        // Set the cookie through the interceptor
         this.cookieStorageInterceptor.setCookie({
             name: "content_server",
             value: imageServer,
@@ -411,18 +394,15 @@ export class NatomangaExtension implements NatomangaImplementation {
 
         const pages: string[] = [];
 
-        // Extraire la liste des CDN du script (comme dans Elftoon)
         let cdns: string[] = [];
         $("script").each((_i, scriptElement) => {
             const scriptContent = $(scriptElement).html() || "";
 
-            // Chercher "var cdns = [...]"
             const cdnsMatch = scriptContent.match(
                 /var\s+cdns\s*=\s*\[(.*?)\];/s,
             );
             if (cdnsMatch && cdnsMatch[1]) {
                 try {
-                    // Nettoyer et parser les CDN
                     const cdnString = `[${cdnsMatch[1].replace(/'/g, '"')}]`;
                     const parsed = JSON.parse(cdnString) as unknown;
                     if (
@@ -440,11 +420,9 @@ export class NatomangaExtension implements NatomangaImplementation {
             }
         });
 
-        // Extraire toutes les images du container, en excluant les ads
         $(".container-chapter-reader img").each((index, el) => {
             const $img = $(el);
 
-            // Skip images inside ads-contain divs
             if ($img.closest(".ads-contain").length > 0) {
                 console.log(`[Natomanga] Skipped ad image at index ${index}`);
                 return;
@@ -452,7 +430,6 @@ export class NatomangaExtension implements NatomangaImplementation {
 
             let imgUrl = $img.attr("src") ?? $img.attr("data-src") ?? "";
 
-            // Skip si l'URL est vide
             if (!imgUrl || imgUrl.trim() === "") {
                 console.warn(`[Natomanga] Empty image URL at index ${index}`);
                 return;
@@ -460,7 +437,6 @@ export class NatomangaExtension implements NatomangaImplementation {
 
             imgUrl = imgUrl.trim();
 
-            // Appliquer le remplacement CDN si disponible
             if (
                 cdns.length > 0 &&
                 imageServerIndex >= 0 &&
@@ -468,7 +444,6 @@ export class NatomangaExtension implements NatomangaImplementation {
             ) {
                 const targetCdn = cdns[imageServerIndex];
                 if (targetCdn) {
-                    // Remplacer tous les CDN par le CDN cible
                     for (const cdnUrl of cdns) {
                         if (imgUrl.includes(cdnUrl)) {
                             imgUrl = imgUrl.replace(cdnUrl, targetCdn);
@@ -478,10 +453,8 @@ export class NatomangaExtension implements NatomangaImplementation {
                 }
             }
 
-            // Correction des URLs relatives
             const finalUrl = this.fixImageUrl(imgUrl);
 
-            // Triple vérification que l'URL est valide avant de l'ajouter
             if (
                 finalUrl &&
                 finalUrl.trim() !== "" &&
