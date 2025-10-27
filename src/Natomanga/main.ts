@@ -59,6 +59,37 @@ export class NatomangaExtension implements NatomangaImplementation {
         this.mainRateLimiter.registerInterceptor();
         this.mainInterceptor.registerInterceptor();
         this.cookieStorageInterceptor.registerInterceptor();
+
+        // NOUVEAU : Bypass proactif au démarrage
+        await this.ensureCloudflareBypass();
+    }
+
+    // NOUVELLE MÉTHODE : Vérifier et déclencher le bypass si nécessaire
+    private async ensureCloudflareBypass(): Promise<void> {
+        try {
+            // Faire une requête test vers une page manga
+            const testRequest: Request = {
+                url: `${baseUrl}/manga/one-piece`,
+                method: "GET",
+            };
+
+            const [response] = await Application.scheduleRequest(testRequest);
+
+            // Si Cloudflare détecté, le signaler immédiatement
+            if (response.status === 403 || response.status === 503) {
+                throw new CloudflareError({
+                    url: testRequest.url,
+                    method: testRequest.method,
+                });
+            }
+        } catch (error) {
+            // Si c'est une CloudflareError, la laisser remonter
+            if (error instanceof CloudflareError) {
+                throw error;
+            }
+            // Autres erreurs : continuer silencieusement
+            console.log("Cloudflare check skipped:", error);
+        }
     }
 
     async getSettingsForm(): Promise<Form> {
@@ -66,31 +97,19 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 
     async getDiscoverSections(): Promise<DiscoverSection[]> {
-        const discover_section_template1: DiscoverSection = {
-            id: "discover-section-template1",
-            title: "Popular Manga",
-            subtitle: "Most popular manga",
-            type: DiscoverSectionType.featured,
-        };
-
-        const discover_section_template2: DiscoverSection = {
-            id: "discover-section-template2",
-            title: "Latest Releases",
-            subtitle: "Recently updated",
-            type: DiscoverSectionType.prominentCarousel,
-        };
-
-        const discover_section_template3: DiscoverSection = {
-            id: "discover-section-template3",
-            title: "More Manga",
-            subtitle: "Browse more titles",
-            type: DiscoverSectionType.simpleCarousel,
-        };
-
         return [
-            discover_section_template1,
-            discover_section_template2,
-            discover_section_template3,
+            {
+                id: "popular-manga",
+                title: "Popular Manga",
+                subtitle: "Most popular manga",
+                type: DiscoverSectionType.featured,
+            },
+            {
+                id: "latest-updates",
+                title: "Latest Updates",
+                subtitle: "Recently updated manga",
+                type: DiscoverSectionType.prominentCarousel,
+            },
         ];
     }
 
@@ -100,6 +119,18 @@ export class NatomangaExtension implements NatomangaImplementation {
     ): Promise<PagedResults<DiscoverSectionItem>> {
         void metadata;
 
+        if (section.id === "popular-manga") {
+            return this.getPopularManga();
+        } else if (section.id === "latest-updates") {
+            return this.getLatestUpdates();
+        }
+
+        return { items: [] };
+    }
+
+    private async getPopularManga(): Promise<
+        PagedResults<DiscoverSectionItem>
+    > {
         const request: Request = {
             url: baseUrl,
             method: "GET",
@@ -108,123 +139,76 @@ export class NatomangaExtension implements NatomangaImplementation {
         const $ = await this.fetchCheerio(request);
         const items: DiscoverSectionItem[] = [];
 
-        let type:
-            | "featuredCarouselItem"
-            | "simpleCarouselItem"
-            | "prominentCarouselItem";
+        // Carousel populaire : .slide .owl-carousel .item
+        $(".slide .owl-carousel .item").each((_i, el) => {
+            const $el = $(el);
+            const link = $el.find("a").attr("href");
 
-        switch (section.id) {
-            case "discover-section-template1":
-                type = "featuredCarouselItem";
-                $(".slide .owl-carousel .item").each((_i, el) => {
-                    const $el = $(el);
-                    const link = $el.find("a").attr("href");
-                    if (!link || link.includes("toffee.ai")) return;
+            // Filtrer les liens toffee.ai (publicités)
+            if (!link || link.includes("toffee.ai")) return;
 
-                    const title = $el.find(".slide-caption h3 a").text().trim();
-                    const imageUrl = $el.find("img").attr("src") ?? "";
-                    const mangaId =
-                        link.split("/manga/")[1]?.split("?")[0] ?? "";
-                    const subtitle = $el
-                        .find('.slide-caption a[href*="/chapter"]')
-                        .text()
-                        .trim();
+            const title = $el.find(".slide-caption h3 a").text().trim();
+            const imageUrl = $el.find("img").attr("src") ?? "";
+            const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
 
-                    if (mangaId && title) {
-                        items.push({
-                            mangaId,
-                            title,
-                            subtitle: subtitle || undefined,
-                            imageUrl,
-                            type,
-                        });
-                    }
+            if (mangaId && title) {
+                items.push({
+                    mangaId,
+                    title,
+                    imageUrl, // L'image ne s'affichera probablement pas, mais on la met quand même
+                    type: "featuredCarouselItem",
                 });
-                break;
+            }
+        });
 
-            case "discover-section-template2":
-                type = "prominentCarouselItem";
-                $(".list-comic-item-wrap")
-                    .slice(0, 10)
-                    .each((_i, el) => {
-                        const $el = $(el);
-                        const link = $el.find("a.list-story-item").attr("href");
-                        if (!link || link.includes("toffee.ai")) return;
+        return { items };
+    }
 
-                        const title = $el.find("h3 a").first().text().trim();
-                        const imageUrl =
-                            $el.find("img").attr("src") ??
-                            $el.find("img").attr("data-src") ??
-                            "";
-                        const mangaId =
-                            link.split("/manga/")[1]?.split("?")[0] ?? "";
-                        const subtitle = $el
-                            .find("a.list-story-item-wrap-chapter")
-                            .text()
-                            .trim();
+    private async getLatestUpdates(): Promise<
+        PagedResults<DiscoverSectionItem>
+    > {
+        const request: Request = {
+            url: baseUrl,
+            method: "GET",
+        };
 
-                        if (mangaId && title) {
-                            items.push({
-                                mangaId,
-                                title,
-                                subtitle: subtitle || undefined,
-                                imageUrl,
-                                type,
-                            });
-                        }
-                    });
-                break;
+        const $ = await this.fetchCheerio(request);
+        const items: DiscoverSectionItem[] = [];
 
-            case "discover-section-template3":
-                type = "simpleCarouselItem";
-                $(".list-comic-item-wrap")
-                    .slice(10, 20)
-                    .each((_i, el) => {
-                        const $el = $(el);
-                        const link = $el.find("a.list-story-item").attr("href");
-                        if (!link || link.includes("toffee.ai")) return;
+        // LATEST MANGA RELEASES : .doreamon .itemupdate.first
+        $(".doreamon .itemupdate.first").each((_i, el) => {
+            const $el = $(el);
+            const link = $el.find("a.cover").attr("href");
 
-                        const title = $el.find("h3 a").first().text().trim();
-                        const imageUrl =
-                            $el.find("img").attr("src") ??
-                            $el.find("img").attr("data-src") ??
-                            "";
-                        const mangaId =
-                            link.split("/manga/")[1]?.split("?")[0] ?? "";
-                        const subtitle = $el
-                            .find("a.list-story-item-wrap-chapter")
-                            .text()
-                            .trim();
+            // Filtrer les liens toffee.ai
+            if (!link || link.includes("toffee.ai")) return;
 
-                        if (mangaId && title) {
-                            items.push({
-                                mangaId,
-                                title,
-                                subtitle: subtitle || undefined,
-                                imageUrl,
-                                type,
-                            });
-                        }
-                    });
-                break;
-        }
+            const title = $el.find("h3 a").text().trim();
+            const imageUrl =
+                $el.find("img").attr("src") ??
+                $el.find("img").attr("data-src") ??
+                "";
+            const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
+
+            // Récupérer le premier chapitre listé
+            const latestChapter = $el.find("li .sts a").first().text().trim();
+
+            if (mangaId && title) {
+                items.push({
+                    mangaId,
+                    title,
+                    subtitle: latestChapter || undefined,
+                    imageUrl,
+                    type: "prominentCarouselItem",
+                });
+            }
+        });
 
         return { items };
     }
 
     async getSearchFilters(): Promise<SearchFilter[]> {
-        return [
-            {
-                id: "search-filter-template",
-                type: "dropdown",
-                options: [
-                    { id: "include", value: "include" },
-                    { id: "exclude", value: "exclude" },
-                ],
-                value: "include",
-                title: "Search Filter Template",
-            },
-        ];
+        return [];
     }
 
     async getSearchResults(
@@ -393,11 +377,10 @@ export class NatomangaExtension implements NatomangaImplementation {
         }
     }
 
-    // MODIFICATION ICI : Passer l'URL de la requête qui a échoué
     checkCloudflareStatus(request: Request, status: number): void {
         if (status == 503 || status == 403) {
             throw new CloudflareError({
-                url: request.url, // Utiliser l'URL de la requête qui a échoué
+                url: request.url,
                 method: request.method,
             });
         }
@@ -405,7 +388,7 @@ export class NatomangaExtension implements NatomangaImplementation {
 
     private async fetchCheerio(request: Request): Promise<CheerioAPI> {
         const [response, data] = await Application.scheduleRequest(request);
-        this.checkCloudflareStatus(request, response.status); // Passer la requête
+        this.checkCloudflareStatus(request, response.status);
         const htmlStr = Application.arrayBufferToUTF8String(data);
         const dom = htmlparser2.parseDocument(htmlStr);
         return cheerio.load(dom);
