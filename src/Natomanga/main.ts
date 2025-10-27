@@ -44,8 +44,8 @@ type NatomangaImplementation = SettingsFormProviding &
 
 export class NatomangaExtension implements NatomangaImplementation {
     mainRateLimiter = new BasicRateLimiter("main", {
-        numberOfRequests: 15,
-        bufferInterval: 10,
+        numberOfRequests: 10,
+        bufferInterval: 1,
         ignoreImages: true,
     });
 
