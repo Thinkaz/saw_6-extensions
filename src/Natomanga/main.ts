@@ -163,33 +163,44 @@ export class NatomangaExtension implements NatomangaImplementation {
         query: SearchQuery,
         metadata?: number,
     ): Promise<PagedResults<SearchResultItem>> {
-        void metadata;
+        const page = metadata ?? 1;
+
+        if (!query.title || query.title.trim() === "") {
+            return { items: [] };
+        }
 
         const searchQuery = query.title.trim().replace(/\s+/g, "_");
         const request = {
-            url: `${baseUrl}/search/story/${searchQuery}`,
+            url: `${baseUrl}/search/story/${searchQuery}?page=${page}`,
             method: "GET" as const,
         };
 
         const $ = await this.fetchCheerio(request);
-        const results: PagedResults<SearchResultItem> = { items: [] };
+        const results: SearchResultItem[] = [];
 
-        $(".doreamon .itemupdate.first").each((_i, el) => {
+        // Sélecteur pour les résultats de recherche
+        $(".panel_story_list .story_item").each((_i, el) => {
             const $el = $(el);
-            const link = $el.find("a.cover").attr("href");
+            const link = $el.find("a").first().attr("href");
             if (!link) return;
 
-            const title = $el.find("h3 a").first().text().trim();
+            const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
+            const title = $el.find("h3.story_name a").text().trim();
+
             const rawImageUrl =
                 $el.find("img").attr("src") ??
                 $el.find("img").attr("data-src") ??
                 "";
             const imageUrl = this.fixImageUrl(rawImageUrl);
-            const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
-            const subtitle = $el.find("li").first().find("a").text().trim();
+
+            const subtitle = $el
+                .find("em.story_chapter a")
+                .first()
+                .text()
+                .trim();
 
             if (mangaId && title) {
-                results.items.push({
+                results.push({
                     mangaId,
                     title,
                     subtitle: subtitle || undefined,
@@ -198,7 +209,14 @@ export class NatomangaExtension implements NatomangaImplementation {
             }
         });
 
-        return { items: results.items };
+        // Vérifier s'il y a une page suivante
+        const hasNextPage =
+            $(".panel_page_number .group_page a.page_last").length > 0;
+
+        return {
+            items: results,
+            metadata: hasNextPage ? page + 1 : undefined,
+        };
     }
 
     async getMangaDetails(mangaId: string): Promise<SourceManga> {
@@ -212,6 +230,13 @@ export class NatomangaExtension implements NatomangaImplementation {
         const title = $(".story-info-right h1").text().trim() || mangaId;
         const rawImageUrl = $(".info-image img").attr("src") ?? "";
         const imageUrl = this.fixImageUrl(rawImageUrl);
+
+        // Validation : si l'URL est vide ou invalide, utiliser une image par défaut
+        const validImageUrl =
+            imageUrl && imageUrl.startsWith("http")
+                ? imageUrl
+                : `${baseUrl}/images/default_nato.webp`;
+
         const description = $(".panel-story-info-description").text().trim();
 
         const tags: Tag[] = [];
@@ -239,7 +264,7 @@ export class NatomangaExtension implements NatomangaImplementation {
             mangaInfo: {
                 primaryTitle: title,
                 secondaryTitles: [],
-                thumbnailUrl: imageUrl,
+                thumbnailUrl: validImageUrl,
                 synopsis: description || "No synopsis available.",
                 contentRating: ContentRating.EVERYONE,
                 status: "UNKNOWN",
@@ -296,23 +321,20 @@ export class NatomangaExtension implements NatomangaImplementation {
         const imageServerIndex = await this.getImageServerIndex();
         const imageServer = imageServerIndex === 0 ? "server1" : "server2";
 
-        // Construire l'URL du chapitre
         const chapterUrl = `${baseUrl}/manga/${chapter.sourceManga.mangaId}/chapter-${chapter.chapterId}`;
 
-        // Extraire le domaine pour le cookie (comme dans MangaBox)
         const cookieDomainMatch = chapterUrl.match(/(https?:\/\/[^/]+)/);
         const cookieDomain = cookieDomainMatch ? cookieDomainMatch[0] : baseUrl;
 
         const cookie: Cookie = {
-            name: "content_server",
+            name: "image_server",
             value: imageServer,
-            domain: cookieDomain,
+            domain: new URL(cookieDomain).hostname,
             path: "/",
             created: new Date(),
-            expires: new Date(Date.now() + 86400000), // 24h
+            expires: new Date(Date.now() + 86400000),
         };
 
-        // Set the cookie using the interceptor
         this.cookieStorageInterceptor.setCookie(cookie);
 
         const request: Request = {
@@ -327,7 +349,6 @@ export class NatomangaExtension implements NatomangaImplementation {
 
         const pages: string[] = [];
 
-        // Extraire la liste des CDN du script
         let cdns: string[] = [];
         const scriptContent = $("head").html() ?? "";
         const scriptMatch = scriptContent.match(/var cdns = \[(.*?)\];/s);
@@ -347,12 +368,10 @@ export class NatomangaExtension implements NatomangaImplementation {
             }
         }
 
-        // Extraire les images
         $(".container-chapter-reader img").each((_i, el) => {
             let imgUrl = $(el).attr("src") ?? $(el).attr("data-src");
             if (!imgUrl) return;
 
-            // Remplacer le CDN si disponible
             if (
                 cdns.length > 0 &&
                 imageServerIndex >= 0 &&
@@ -377,15 +396,12 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 
     async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
-        // Supprimer les anciens cookies d'abord
         const existingCookies = [...this.cookieStorageInterceptor.cookies];
         for (const cookie of existingCookies) {
             this.cookieStorageInterceptor.deleteCookie(cookie);
         }
 
-        // Ajouter les nouveaux cookies
         for (const cookie of cookies) {
-            // Ne pas ajouter les cookies expirés
             if (!cookie.expires || cookie.expires.getTime() > Date.now()) {
                 this.cookieStorageInterceptor.setCookie(cookie);
             }
