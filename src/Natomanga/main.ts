@@ -44,7 +44,7 @@ type NatomangaImplementation = SettingsFormProviding &
 
 export class NatomangaExtension implements NatomangaImplementation {
     mainRateLimiter = new BasicRateLimiter("main", {
-        numberOfRequests: 10,
+        numberOfRequests: 4,
         bufferInterval: 1,
         ignoreImages: true,
     });
@@ -65,32 +65,29 @@ export class NatomangaExtension implements NatomangaImplementation {
         return new SettingsForm();
     }
 
-    // Fonction utilitaire pour obtenir le serveur d'images depuis les réglages (recréée à partir de MangaBoxSettings.ts)
     private async getImageServerIndex(): Promise<number> {
         const server = (await Application.getState("image_server")) as
             | string[]
             | undefined;
-        // La valeur stockée est ['server1'] ou ['server2']. On convertit en index 0 ou 1.
         return parseInt(server?.[0]?.replace("server", "") ?? "1") - 1;
     }
 
     async getDiscoverSections(): Promise<DiscoverSection[]> {
-        // IDs utilisés ici: 4 (Latest), 1 (New), 7 (Popular)
         return [
             {
-                id: "4", // Latest Updates
+                id: "4",
                 title: "Latest Updates",
                 subtitle: "The most recently updated chapters",
                 type: DiscoverSectionType.prominentCarousel,
             },
             {
-                id: "1", // New Titles
+                id: "1",
                 title: "New Titles",
                 subtitle: "Recently added manga to the source",
                 type: DiscoverSectionType.simpleCarousel,
             },
             {
-                id: "7", // Most Popular
+                id: "7",
                 title: "Most Popular",
                 subtitle: "Titles with the most views",
                 type: DiscoverSectionType.simpleCarousel,
@@ -98,10 +95,6 @@ export class NatomangaExtension implements NatomangaImplementation {
         ];
     }
 
-    /**
-     * CORRECTION 3: Gère la pagination en appelant l'URL /genre/all?filter=...
-     * La page d'accueil ne suffit pas pour 'Voir plus'.
-     */
     async getDiscoverSectionItems(
         section: DiscoverSection,
         metadata: number | undefined,
@@ -109,7 +102,6 @@ export class NatomangaExtension implements NatomangaImplementation {
         const page = metadata ?? 1;
 
         const request: Request = {
-            // L'URL pour le bouton 'Voir Plus'
             url: `${baseUrl}/genre/all?filter=${section.id}&page=${page}`,
             method: "GET",
         };
@@ -117,13 +109,11 @@ export class NatomangaExtension implements NatomangaImplementation {
         const $ = await this.fetchCheerio(request);
         const items: DiscoverSectionItem[] = [];
 
-        // Déterminer le type d'item basé sur le type de section
         const itemType: "prominentCarouselItem" | "simpleCarouselItem" =
             section.type === DiscoverSectionType.prominentCarousel
                 ? "prominentCarouselItem"
                 : "simpleCarouselItem";
 
-        // Sélecteur v0.8 (testé et fonctionnel pour cette page)
         $("div.comic-list div.list-comic-item-wrap").each((_i, el) => {
             const $el = $(el);
 
@@ -133,7 +123,6 @@ export class NatomangaExtension implements NatomangaImplementation {
             const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
             const title = $el.find("h3 a").first().text().trim();
 
-            // Correction d'image (fixe les chemins relatifs)
             const rawImageUrl =
                 $el.find("img").attr("src") ??
                 $el.find("img").attr("data-src") ??
@@ -156,31 +145,18 @@ export class NatomangaExtension implements NatomangaImplementation {
             }
         });
 
-        // Vérification de la pagination pour déterminer s'il y a plus de pages
         const hasNextPage =
             $(".pagination-out").length > 0 &&
             $(".pagination-list li.pagination-next").length > 0;
 
         return {
             items,
-            metadata: hasNextPage ? page + 1 : undefined, // metadata contiendra le prochain numéro de page
+            metadata: hasNextPage ? page + 1 : undefined,
         };
     }
 
     async getSearchFilters(): Promise<SearchFilter[]> {
-        // Laissez ceci pour l'instant, mais la recherche sur Natomanga ne semble pas utiliser de filtres complexes.
-        return [
-            {
-                id: "search-filter-template",
-                type: "dropdown",
-                options: [
-                    { id: "include", value: "include" },
-                    { id: "exclude", value: "exclude" },
-                ],
-                value: "include",
-                title: "Search Filter Template",
-            },
-        ];
+        return [];
     }
 
     async getSearchResults(
@@ -198,7 +174,6 @@ export class NatomangaExtension implements NatomangaImplementation {
         const $ = await this.fetchCheerio(request);
         const results: PagedResults<SearchResultItem> = { items: [] };
 
-        // Sélecteur v0.8
         $(".doreamon .itemupdate.first").each((_i, el) => {
             const $el = $(el);
             const link = $el.find("a.cover").attr("href");
@@ -209,7 +184,7 @@ export class NatomangaExtension implements NatomangaImplementation {
                 $el.find("img").attr("src") ??
                 $el.find("img").attr("data-src") ??
                 "";
-            const imageUrl = this.fixImageUrl(rawImageUrl); // Correction d'image
+            const imageUrl = this.fixImageUrl(rawImageUrl);
             const mangaId = link.split("/manga/")[1]?.split("?")[0] ?? "";
             const subtitle = $el.find("li").first().find("a").text().trim();
 
@@ -223,7 +198,6 @@ export class NatomangaExtension implements NatomangaImplementation {
             }
         });
 
-        // La recherche ne semble pas avoir de pagination facilement parsable. On laisse un undefined.
         return { items: results.items };
     }
 
@@ -237,7 +211,7 @@ export class NatomangaExtension implements NatomangaImplementation {
 
         const title = $(".story-info-right h1").text().trim() || mangaId;
         const rawImageUrl = $(".info-image img").attr("src") ?? "";
-        const imageUrl = this.fixImageUrl(rawImageUrl); // Correction d'image
+        const imageUrl = this.fixImageUrl(rawImageUrl);
         const description = $(".panel-story-info-description").text().trim();
 
         const tags: Tag[] = [];
@@ -288,7 +262,6 @@ export class NatomangaExtension implements NatomangaImplementation {
         const $ = await this.fetchCheerio(request);
         const chapters: Chapter[] = [];
 
-        // Note: Natomanga trie les chapitres du plus récent au plus ancien dans le HTML
         $(".row-content-chapter li").each((i, el) => {
             const $el = $(el);
             const chapterLink = $el.find("a").attr("href");
@@ -298,14 +271,13 @@ export class NatomangaExtension implements NatomangaImplementation {
             const chapterId = chapterLink.split("/chapter-")[1] ?? `${i}`;
             const chapterTitle = $el.find("a").text().trim();
 
-            // Tentative d'extraction du numéro de chapitre
             const chapterMatch = chapterTitle.match(
                 /chapter\s+(\d+(?:\.\d+)?)/i,
             );
             const chapNum =
                 chapterMatch && chapterMatch[1]
                     ? parseFloat(chapterMatch[1])
-                    : i + 1; // Fallback au numéro d'index
+                    : i + 1;
 
             chapters.push({
                 chapterId,
@@ -314,40 +286,54 @@ export class NatomangaExtension implements NatomangaImplementation {
                 chapNum,
                 title: chapterTitle,
                 volume: undefined,
-                // Le tri est fait par Paperback, on n'a pas besoin de sortingIndex explicite ici.
             });
         });
 
         return chapters;
     }
 
-    /**
-     * CORRECTION 1: Ajout de la logique de sélection de CDN pour les pages.
-     */
     async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
+        const imageServerIndex = await this.getImageServerIndex();
+        const imageServer = imageServerIndex === 0 ? "server1" : "server2";
+
+        // Construire l'URL du chapitre
+        const chapterUrl = `${baseUrl}/manga/${chapter.sourceManga.mangaId}/chapter-${chapter.chapterId}`;
+
+        // Extraire le domaine pour le cookie (comme dans MangaBox)
+        const cookieDomainMatch = chapterUrl.match(/(https?:\/\/[^/]+)/);
+        const cookieDomain = cookieDomainMatch ? cookieDomainMatch[0] : baseUrl;
+
+        const cookie: Cookie = {
+            name: "content_server",
+            value: imageServer,
+            domain: cookieDomain,
+            path: "/",
+            created: new Date(),
+            expires: new Date(Date.now() + 86400000), // 24h
+        };
+
+        // Set the cookie using the interceptor
+        this.cookieStorageInterceptor.setCookie(cookie);
+
         const request: Request = {
-            url: `${baseUrl}/manga/${chapter.sourceManga.mangaId}/chapter-${chapter.chapterId}`,
+            url: chapterUrl,
             method: "GET",
         };
 
         const [response, data] = await Application.scheduleRequest(request);
-        this.checkCloudflareStatus(request, response.status);
+        await this.checkCloudflareStatus(response.status);
         const htmlStr = Application.arrayBufferToUTF8String(data);
-        const $ = cheerio.load(htmlStr); // Ne pas utiliser htmlparser2 car nous avons besoin de l'HTML brut pour le script
+        const $ = cheerio.load(htmlStr);
 
         const pages: string[] = [];
 
-        // 1. Déterminer l'index du serveur d'images
-        const imageServerIndex = await this.getImageServerIndex();
-
-        // 2. Tenter d'extraire la liste des CDN
+        // Extraire la liste des CDN du script
         let cdns: string[] = [];
-        const scriptMatch = $("head")
-            .html()
-            ?.match(/var cdns = \[(.*?)\];/s);
+        const scriptContent = $("head").html() ?? "";
+        const scriptMatch = scriptContent.match(/var cdns = \[(.*?)\];/s);
+
         if (scriptMatch && scriptMatch[1]) {
             try {
-                // Créer une chaîne JSON valide en remplaçant les guillemets simples (s'il y en a)
                 const cdnString = `[${scriptMatch[1].replace(/'/g, '"')}]`;
                 const parsed = JSON.parse(cdnString) as unknown;
                 if (
@@ -355,36 +341,31 @@ export class NatomangaExtension implements NatomangaImplementation {
                     parsed.every((p) => typeof p === "string")
                 ) {
                     cdns = parsed;
-                } else {
-                    console.warn(
-                        "CDN list parsed but is not an array of strings:",
-                        parsed,
-                    );
                 }
             } catch (e) {
                 console.error("Failed to parse CDN list:", e);
             }
         }
 
-        // 3. Boucler sur les images et appliquer la correction de CDN si possible
+        // Extraire les images
         $(".container-chapter-reader img").each((_i, el) => {
             let imgUrl = $(el).attr("src") ?? $(el).attr("data-src");
             if (!imgUrl) return;
 
-            // Correction 1: Remplacement du CDN si la liste est disponible
+            // Remplacer le CDN si disponible
             if (
                 cdns.length > 0 &&
                 imageServerIndex >= 0 &&
                 imageServerIndex < cdns.length
             ) {
-                const newCdn = cdns[imageServerIndex];
-                // Le code v0.8 fait une substitution globale
-                for (const cdnUrl of cdns) {
-                    imgUrl = imgUrl.replace(cdnUrl, newCdn ?? "");
+                const targetCdn = cdns[imageServerIndex];
+                if (targetCdn) {
+                    for (const cdnUrl of cdns) {
+                        imgUrl = imgUrl.replace(cdnUrl, targetCdn);
+                    }
                 }
             }
 
-            // Correction 2: Correction générale (relatif, //)
             pages.push(this.fixImageUrl(imgUrl));
         });
 
@@ -395,51 +376,75 @@ export class NatomangaExtension implements NatomangaImplementation {
         };
     }
 
-    /**
-     * CORRECTION 2: Assure la persistance des cookies Cloudflare.
-     */
     async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {
-        // Vider les cookies existants avant d'enregistrer les nouveaux
-        for (const cookie of this.cookieStorageInterceptor.cookies) {
+        // Supprimer les anciens cookies d'abord
+        const existingCookies = [...this.cookieStorageInterceptor.cookies];
+        for (const cookie of existingCookies) {
             this.cookieStorageInterceptor.deleteCookie(cookie);
         }
 
-        // Enregistrer les nouveaux cookies
+        // Ajouter les nouveaux cookies
         for (const cookie of cookies) {
-            // S'assurer que le cookie n'est pas expiré
-            if (cookie.expires && cookie.expires.getTime() <= Date.now()) {
-                continue;
+            // Ne pas ajouter les cookies expirés
+            if (!cookie.expires || cookie.expires.getTime() > Date.now()) {
+                this.cookieStorageInterceptor.setCookie(cookie);
             }
-            this.cookieStorageInterceptor.setCookie(cookie);
+        }
+
+        console.log(
+            "Cloudflare cookies saved:",
+            this.cookieStorageInterceptor.cookies,
+        );
+    }
+
+    async getCloudflareBypassRequest(): Promise<Request> {
+        return {
+            url: baseUrl,
+            method: "GET",
+            headers: {
+                referer: baseUrl,
+                origin: baseUrl,
+            },
+        };
+    }
+
+    async checkCloudflareStatus(status: number): Promise<void> {
+        console.log("Response status:", status);
+        console.log("Current cookies:", this.cookieStorageInterceptor.cookies);
+
+        switch (status) {
+            case 503:
+            case 403:
+                console.log(
+                    `Cloudflare protection detected. Status: ${status}`,
+                );
+                throw new CloudflareError(
+                    {
+                        url: baseUrl,
+                        method: "GET",
+                        headers: {
+                            referer: baseUrl,
+                            origin: baseUrl,
+                        },
+                    },
+                    "Cloudflare bypass required, please complete the challenge.",
+                );
+            case 404:
+                throw new Error("Content not found");
         }
     }
 
-    checkCloudflareStatus(request: Request, status: number): void {
-        if (status == 503 || status == 403) {
-            // Lancer l'erreur Cloudflare avec les détails de la requête
-            throw new CloudflareError({
-                url: request.url,
-                method: request.method,
-            });
-        }
+    getMangaShareUrl(mangaId: string): string {
+        return `${baseUrl}/manga/${mangaId}`;
     }
 
-    // =================================================================
-    // FONCTIONS UTILITAIRES
-    // =================================================================
-
-    /**
-     * Corrige les URL d'images relatives ou celles commençant par //
-     */
     private fixImageUrl(url: string): string {
         if (!url) return "";
 
-        // Gère les URL commençant par // (ex: //example.com/img.png)
         if (url.startsWith("//")) {
             return "https:" + url;
         }
 
-        // Gère les URL relatives (ex: /images/img.png)
         if (url.startsWith("/")) {
             return baseUrl + url;
         }
@@ -449,7 +454,7 @@ export class NatomangaExtension implements NatomangaImplementation {
 
     private async fetchCheerio(request: Request): Promise<CheerioAPI> {
         const [response, data] = await Application.scheduleRequest(request);
-        this.checkCloudflareStatus(request, response.status);
+        await this.checkCloudflareStatus(response.status);
         const htmlStr = Application.arrayBufferToUTF8String(data);
         const dom = htmlparser2.parseDocument(htmlStr);
         return cheerio.load(dom);
