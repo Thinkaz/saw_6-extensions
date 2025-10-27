@@ -145,35 +145,31 @@ export class NatomangaExtension implements NatomangaImplementation {
             }
         });
 
-        // Meilleure détection de pagination
+        // Détection de pagination basée sur le HTML réel
         let hasNextPage = false;
 
-        // Méthode 1: Chercher le bouton "Next" ou numéro de page suivante
-        const nextPageLink = $(".pagination-list li.pagination-next a").attr(
-            "href",
-        );
-        if (nextPageLink) {
-            hasNextPage = true;
-        }
+        // Méthode 1: Vérifier si la page actuelle n'est pas déjà sélectionnée comme dernière
+        const currentPageText = $(".group_page a.page_select").text().trim();
+        const currentPageNum = parseInt(currentPageText) || page;
 
-        // Méthode 2: Vérifier si la page actuelle n'est pas la dernière
-        const lastPageText = $(
-            ".pagination-list .page_last, .pagination-list a.page_last",
-        ).text();
-        const lastPageMatch = lastPageText.match(/Last\((\d+)\)/);
+        // Méthode 2: Extraire le numéro de la dernière page depuis "Last(X)"
+        const lastPageLink = $(".group_page a.page_last").text();
+        const lastPageMatch = lastPageLink.match(/Last\((\d+)\)/);
+
         if (lastPageMatch) {
             const lastPage = parseInt(lastPageMatch[1] ?? "1");
-            hasNextPage = page < lastPage;
+            hasNextPage = currentPageNum < lastPage;
+        } else {
+            // Fallback: S'il y a un lien avec page=X+1, alors il y a une page suivante
+            const nextPageExists =
+                $(`.group_page a[href*="page=${page + 1}"]`).length > 0;
+            hasNextPage = nextPageExists && items.length > 0;
         }
 
-        // Méthode 3: Vérifier s'il y a des items (si pas d'items = fin)
+        // Sécurité: Si pas d'items du tout, pas de page suivante
         if (items.length === 0) {
             hasNextPage = false;
         }
-
-        console.log(
-            `[Natomanga] Section ${section.id} - Page ${page} - Items: ${items.length} - HasNext: ${hasNextPage}`,
-        );
 
         return {
             items,
@@ -354,10 +350,9 @@ export class NatomangaExtension implements NatomangaImplementation {
 
             // Extraction du numéro de chapitre
             const chapterMatch = chapterId.match(/^(\d+(?:\.\d+)?)/);
-            const chapNum =
-                chapterMatch && chapterMatch[1]
-                    ? parseFloat(chapterMatch[1])
-                    : i + 1;
+            const chapNum = chapterMatch?.[1]
+                ? parseFloat(chapterMatch[1])
+                : i + 1;
 
             chapters.push({
                 chapterId,
