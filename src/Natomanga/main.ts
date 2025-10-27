@@ -389,16 +389,15 @@ export class NatomangaExtension implements NatomangaImplementation {
         const cookieDomainMatch = chapterUrl.match(/(https?:\/\/[^/]+)/);
         const cookieDomain = cookieDomainMatch ? cookieDomainMatch[0] : baseUrl;
 
-        const cookie: Cookie = {
-            name: "image_server",
+        // Set the cookie through the interceptor
+        this.cookieStorageInterceptor.setCookie({
+            name: "content_server",
             value: imageServer,
-            domain: new URL(cookieDomain).hostname,
+            domain: cookieDomain,
             path: "/",
             created: new Date(),
             expires: new Date(Date.now() + 86400000),
-        };
-
-        this.cookieStorageInterceptor.setCookie(cookie);
+        });
 
         const request: Request = {
             url: chapterUrl,
@@ -412,6 +411,7 @@ export class NatomangaExtension implements NatomangaImplementation {
 
         const pages: string[] = [];
 
+        // Extraire la liste des CDN du script (comme dans Elftoon)
         let cdns: string[] = [];
         $("script").each((_i, scriptElement) => {
             const scriptContent = $(scriptElement).html() || "";
@@ -441,10 +441,17 @@ export class NatomangaExtension implements NatomangaImplementation {
         });
 
         // Extraire toutes les images du container
-        $(".container-chapter-reader img").each((_i, el) => {
-            let imgUrl = $(el).attr("src") ?? $(el).attr("data-src") ?? "";
+        $(".container-chapter-reader img").each((index, el) => {
+            const $img = $(el);
+            let imgUrl = $img.attr("src") ?? $img.attr("data-src") ?? "";
 
-            if (!imgUrl) return;
+            // Skip si l'URL est vide
+            if (!imgUrl || imgUrl.trim() === "") {
+                console.warn(`[Natomanga] Empty image URL at index ${index}`);
+                return;
+            }
+
+            imgUrl = imgUrl.trim();
 
             // Appliquer le remplacement CDN si disponible
             if (
@@ -467,9 +474,21 @@ export class NatomangaExtension implements NatomangaImplementation {
             // Correction des URLs relatives
             const finalUrl = this.fixImageUrl(imgUrl);
 
-            // Vérifier que l'URL est valide
-            if (finalUrl && finalUrl.startsWith("http")) {
+            // Triple vérification que l'URL est valide avant de l'ajouter
+            if (
+                finalUrl &&
+                finalUrl.trim() !== "" &&
+                (finalUrl.startsWith("http://") ||
+                    finalUrl.startsWith("https://"))
+            ) {
                 pages.push(finalUrl);
+                console.log(
+                    `[Natomanga] Added page ${pages.length}: ${finalUrl.substring(0, 50)}...`,
+                );
+            } else {
+                console.warn(
+                    `[Natomanga] Invalid URL skipped at index ${index}: "${finalUrl}"`,
+                );
             }
         });
 
@@ -478,7 +497,9 @@ export class NatomangaExtension implements NatomangaImplementation {
         );
 
         if (pages.length === 0) {
-            throw new Error(`No images found for chapter ${chapter.chapterId}`);
+            throw new Error(
+                `No images found for chapter ${chapter.chapterId}. Check console logs for details.`,
+            );
         }
 
         return {

@@ -8,7 +8,7 @@ export default {
     name: "Natomanga",
     description:
         "Template that shows the functionality of content providing extensions.",
-    version: "1.0.0-alpha.9",
+    version: "1.0.0-alpha.10",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,
