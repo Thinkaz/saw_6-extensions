@@ -1,12 +1,12 @@
 {
-  "buildTime": "2025-10-27T23:43:48.406Z",
+  "buildTime": "2025-10-27T23:55:50.036Z",
   "builtWith": {
     "toolchain": "1.0.0-alpha.57",
     "types": "1.0.0-alpha.57"
   },
   "repository": {
     "name": "Saw_6 Extensions (0.9)",
-    "description": "Paperback extensions designed as templates to help developers get started quickly. Maintained by Inkdex."
+    "description": "Saw_6 Extensions for Paperback App - Enjoy!"
   },
   "sources": [
     {
