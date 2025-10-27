@@ -148,28 +148,22 @@ export class NatomangaExtension implements NatomangaImplementation {
         // Détection de pagination basée sur le HTML réel
         let hasNextPage = false;
 
-        // Méthode 1: Vérifier si la page actuelle n'est pas déjà sélectionnée comme dernière
         const currentPageText = $(".group_page a.page_select").text().trim();
         const currentPageNum = parseInt(currentPageText) || page;
 
-        // Méthode 2: Extraire le numéro de la dernière page depuis "Last(X)"
         const lastPageLink = $(".group_page a.page_last").text();
         const lastPageMatch = lastPageLink.match(/Last\((\d+)\)/);
 
         if (lastPageMatch) {
             const lastPage = parseInt(lastPageMatch[1] ?? "1");
             hasNextPage = currentPageNum < lastPage;
-            console.log(
-                `[Natomanga] Section ${section.id} - Page ${currentPageNum}/${lastPage} - Items: ${items.length} - HasNext: ${hasNextPage}`,
-            );
+            console.log();
         } else {
             // Fallback: S'il y a un lien avec page=X+1, alors il y a une page suivante
             const nextPageExists =
                 $(`.group_page a[href*="page=${page + 1}"]`).length > 0;
             hasNextPage = nextPageExists && items.length > 0;
-            console.log(
-                `[Natomanga] Section ${section.id} - Page ${page} - Items: ${items.length} - HasNext: ${hasNextPage} (fallback)`,
-            );
+            console.log();
         }
 
         // Sécurité: Si pas d'items du tout, pas de page suivante
@@ -418,7 +412,6 @@ export class NatomangaExtension implements NatomangaImplementation {
 
         const pages: string[] = [];
 
-        // Extraire la liste des CDN du script (comme dans Elftoon)
         let cdns: string[] = [];
         $("script").each((_i, scriptElement) => {
             const scriptContent = $(scriptElement).html() || "";
@@ -555,17 +548,15 @@ export class NatomangaExtension implements NatomangaImplementation {
     }
 
     private fixImageUrl(url: string): string {
-        if (!url) return "";
-
-        if (url.startsWith("//")) {
-            return "https:" + url;
+        if (!url || url.trim() === "") return "";
+        const trimmedUrl = url.trim();
+        if (trimmedUrl.startsWith("//")) {
+            return "https:" + trimmedUrl;
         }
-
-        if (url.startsWith("/")) {
-            return baseUrl + url;
+        if (trimmedUrl.startsWith("/")) {
+            return baseUrl + trimmedUrl;
         }
-
-        return url;
+        return trimmedUrl;
     }
 
     private async fetchCheerio(request: Request): Promise<CheerioAPI> {
