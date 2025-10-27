@@ -145,9 +145,35 @@ export class NatomangaExtension implements NatomangaImplementation {
             }
         });
 
-        const hasNextPage =
-            $(".pagination-out").length > 0 &&
-            $(".pagination-list li.pagination-next").length > 0;
+        // Meilleure détection de pagination
+        let hasNextPage = false;
+
+        // Méthode 1: Chercher le bouton "Next" ou numéro de page suivante
+        const nextPageLink = $(".pagination-list li.pagination-next a").attr(
+            "href",
+        );
+        if (nextPageLink) {
+            hasNextPage = true;
+        }
+
+        // Méthode 2: Vérifier si la page actuelle n'est pas la dernière
+        const lastPageText = $(
+            ".pagination-list .page_last, .pagination-list a.page_last",
+        ).text();
+        const lastPageMatch = lastPageText.match(/Last\((\d+)\)/);
+        if (lastPageMatch) {
+            const lastPage = parseInt(lastPageMatch[1] ?? "1");
+            hasNextPage = page < lastPage;
+        }
+
+        // Méthode 3: Vérifier s'il y a des items (si pas d'items = fin)
+        if (items.length === 0) {
+            hasNextPage = false;
+        }
+
+        console.log(
+            `[Natomanga] Section ${section.id} - Page ${page} - Items: ${items.length} - HasNext: ${hasNextPage}`,
+        );
 
         return {
             items,
@@ -227,20 +253,47 @@ export class NatomangaExtension implements NatomangaImplementation {
 
         const $ = await this.fetchCheerio(request);
 
-        const title = $(".story-info-right h1").text().trim() || mangaId;
-        const rawImageUrl = $(".info-image img").attr("src") ?? "";
-        const imageUrl = this.fixImageUrl(rawImageUrl);
+        // Titre principal
+        const title =
+            $(".manga-info-text h1").first().text().trim() ||
+            $(".story-info-right h1").text().trim() ||
+            mangaId;
 
-        // Validation : si l'URL est vide ou invalide, utiliser une image par défaut
+        // Image
+        const rawImageUrl =
+            $(".manga-info-pic img").attr("src") ??
+            $(".info-image img").attr("src") ??
+            "";
+        const imageUrl = this.fixImageUrl(rawImageUrl);
         const validImageUrl =
             imageUrl && imageUrl.startsWith("http")
                 ? imageUrl
                 : `${baseUrl}/images/default_nato.webp`;
 
-        const description = $(".panel-story-info-description").text().trim();
+        // Description (pas toujours présente)
+        const description =
+            $("#panel-story-info-description").text().trim() ||
+            $(".panel-story-info-description").text().trim() ||
+            "";
 
+        // Status
+        let status: "ONGOING" | "COMPLETED" | "UNKNOWN" = "UNKNOWN";
+        $(".manga-info-text li").each((_i, el) => {
+            const text = $(el).text().trim();
+            if (text.includes("Status")) {
+                if (text.toLowerCase().includes("ongoing")) {
+                    status = "ONGOING";
+                } else if (text.toLowerCase().includes("completed")) {
+                    status = "COMPLETED";
+                }
+            }
+        });
+
+        // Genres/Tags
         const tags: Tag[] = [];
-        $(".variations-tableInfo .table-value a.a-h").each((_i, el) => {
+        $(
+            ".manga-info-text li.genres a, .variations-tableInfo .table-value a.a-h",
+        ).each((_i, el) => {
             const genreText = $(el).text().trim();
             if (genreText) {
                 tags.push({
@@ -267,7 +320,7 @@ export class NatomangaExtension implements NatomangaImplementation {
                 thumbnailUrl: validImageUrl,
                 synopsis: description || "No synopsis available.",
                 contentRating: ContentRating.EVERYONE,
-                status: "UNKNOWN",
+                status,
                 tagGroups: tagSections,
             },
         };
@@ -287,18 +340,20 @@ export class NatomangaExtension implements NatomangaImplementation {
         const $ = await this.fetchCheerio(request);
         const chapters: Chapter[] = [];
 
-        $(".row-content-chapter li").each((i, el) => {
+        // Sélecteur pour les chapitres
+        $(".chapter-list .row, .row-content-chapter li").each((i, el) => {
             const $el = $(el);
-            const chapterLink = $el.find("a").attr("href");
+            const chapterLink = $el.find("a").first().attr("href");
 
             if (!chapterLink) return;
 
-            const chapterId = chapterLink.split("/chapter-")[1] ?? `${i}`;
-            const chapterTitle = $el.find("a").text().trim();
+            const chapterIdMatch = chapterLink.match(/\/chapter-([^/?]+)/);
+            const chapterId = chapterIdMatch?.[1] ?? `${i}`;
 
-            const chapterMatch = chapterTitle.match(
-                /chapter\s+(\d+(?:\.\d+)?)/i,
-            );
+            const chapterTitle = $el.find("a").first().text().trim();
+
+            // Extraction du numéro de chapitre
+            const chapterMatch = chapterId.match(/^(\d+(?:\.\d+)?)/);
             const chapNum =
                 chapterMatch && chapterMatch[1]
                     ? parseFloat(chapterMatch[1])
