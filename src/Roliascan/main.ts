@@ -557,15 +557,13 @@ export class RoliascanExtension implements RoliascanImplementation {
 
         const pages: string[] = [];
 
-        $("img").each((index, el) => {
-            const $img = $(el);
+        const contentContainer = $(".manga-child-the-content.my-5");
+        if (contentContainer.length === 0) {
+            throw new Error("Content container not found. Unable to extract images.");
+        }
 
-            if ($img.closest(".ads-contain, .adsbygoogle").length > 0) {
-                console.log(
-                    `[Roliascan] Skipped ad container at index ${index}`,
-                );
-                return;
-            }
+        contentContainer.find("img").each((index, el) => {
+            const $img = $(el);
 
             let imgUrl = $img.attr("src") ?? $img.attr("data-src") ?? "";
 
@@ -576,16 +574,10 @@ export class RoliascanExtension implements RoliascanImplementation {
             imgUrl = imgUrl.trim();
 
             if (
-                imgUrl.includes(
-                    "roliascan.com/wp-content/uploads/2024/07/warning-1.png",
-                ) ||
-                imgUrl.includes(
-                    "roliascan.com/wp-content/uploads/2025/09/end-chapter.jpg",
-                )
+                imgUrl.includes("roliascan.com/wp-content/uploads/2024/07/warning-1.png") ||
+                imgUrl.includes("roliascan.com/wp-content/uploads/2025/09/end-chapter.jpg")
             ) {
-                console.log(
-                    `[Roliascan] Skipped unwanted image: ${imgUrl.substring(0, 50)}...`,
-                );
+                console.log(`[Roliascan] Skipped unwanted image: ${imgUrl.substring(0, 50)}...`);
                 return;
             }
 
@@ -594,8 +586,7 @@ export class RoliascanExtension implements RoliascanImplementation {
             if (
                 finalUrl &&
                 finalUrl.trim() !== "" &&
-                (finalUrl.startsWith("http://") ||
-                    finalUrl.startsWith("https://"))
+                (finalUrl.startsWith("http://") || finalUrl.startsWith("https://"))
             ) {
                 pages.push(finalUrl);
                 console.log(
