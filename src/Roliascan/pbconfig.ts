@@ -5,9 +5,9 @@ import {
 } from "@paperback/types";
 
 export default {
-    name: "Natomanga",
-    description: "Extension for Natomanga - Read manga and manhwa online",
-    version: "1.0.0-alpha.12",
+    name: "Roliascan",
+    description: "Extension for Roliascan - Read manga and manhwa online",
+    version: "1.0.0-alpha.1",
     icon: "icon.png",
     language: "en",
     contentRating: ContentRating.EVERYONE,
