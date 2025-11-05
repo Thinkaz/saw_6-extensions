@@ -5,6 +5,7 @@ A simple repository for Paperback providing content.
 ## Current sources
 
 - Natomanga
+- Roliascan
 - _🏗️ In construction_
 
 ## Installation
