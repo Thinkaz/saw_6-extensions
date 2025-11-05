@@ -575,14 +575,11 @@ export class RoliascanExtension implements RoliascanImplementation {
 
             imgUrl = imgUrl.trim();
 
-            if (imgUrl.includes("roliascan.com/wp-content")) {
-                console.log(
-                    `[Roliascan] Skipped wp-content image: ${imgUrl.substring(0, 50)}...`,
-                );
-                return;
-            }
-
-            if (!imgUrl.includes("vla.roliascan.com")) {
+            if (
+                imgUrl.includes("roliascan.com/wp-content/uploads/2024/07/warning-1.png") ||
+                imgUrl.includes("roliascan.com/wp-content/uploads/2025/09/end-chapter.jpg")
+            ) {
+                console.log(`[Roliascan] Skipped unwanted image: ${imgUrl.substring(0, 50)}...`);
                 return;
             }
 
