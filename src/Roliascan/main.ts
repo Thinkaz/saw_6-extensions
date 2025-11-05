@@ -107,7 +107,9 @@ export class RoliascanExtension implements RoliascanImplementation {
             };
             const $ = await this.fetchCheerio(request);
 
-            $(".carousel.home-novels-sld .col-6.col-sm-4.col-xl-2.p-3.post").each((_i, el) => {
+            $(
+                ".carousel.home-novels-sld .col-6.col-sm-4.col-xl-2.p-3.post",
+            ).each((_i, el) => {
                 const $el = $(el);
 
                 const titleElement = $el.find("h6 a");
@@ -116,8 +118,11 @@ export class RoliascanExtension implements RoliascanImplementation {
 
                 if (!link || !link.includes("/manga/")) return;
 
-                const mangaId = link.split("/manga/")[1]?.replace(/\/$/, "") ?? "";
-                const imageUrl = this.fixImageUrl($el.find("img.poster").attr("src") ?? "");
+                const mangaId =
+                    link.split("/manga/")[1]?.replace(/\/$/, "") ?? "";
+                const imageUrl = this.fixImageUrl(
+                    $el.find("img.poster").attr("src") ?? "",
+                );
 
                 if (mangaId && title) {
                     items.push({
@@ -160,7 +165,7 @@ export class RoliascanExtension implements RoliascanImplementation {
                     .first()
                     .find("a")
                     .attr("href");
-                
+
                 const latestChapterTitle = $el
                     .find(".chapter-row")
                     .first()
@@ -170,7 +175,8 @@ export class RoliascanExtension implements RoliascanImplementation {
 
                 let chapterId = "";
                 if (firstChapterLink) {
-                    const chapterMatch = firstChapterLink.match(/\/chapter-([^/?]+)/);
+                    const chapterMatch =
+                        firstChapterLink.match(/\/chapter-([^/?]+)/);
                     chapterId = chapterMatch?.[1] ?? "";
                 }
 
@@ -186,24 +192,38 @@ export class RoliascanExtension implements RoliascanImplementation {
                 }
             });
 
-            console.log(`[Roliascan] Page ${page}: Found ${items.length} items`);
-            
+            console.log(
+                `[Roliascan] Page ${page}: Found ${items.length} items`,
+            );
+
             const pagerHtml = $(".facetwp-pager").html();
-            console.log(`[Roliascan] Pager HTML: ${pagerHtml ? pagerHtml.substring(0, 200) : 'NOT FOUND'}`);
-            
+            console.log(
+                `[Roliascan] Pager HTML: ${pagerHtml ? pagerHtml.substring(0, 200) : "NOT FOUND"}`,
+            );
+
             const allPagerLinks = $(".facetwp-pager a");
-            console.log(`[Roliascan] Found ${allPagerLinks.length} pager links`);
-            
-            const nextPageAttr = $(".facetwp-pager .facetwp-page.next").attr("data-page");
-            const lastPageAttr = $(".facetwp-pager .facetwp-page.last").attr("data-page");
-            
-            console.log(`[Roliascan] Next page attr: ${nextPageAttr}, Last page attr: ${lastPageAttr}`);
-            
+            console.log(
+                `[Roliascan] Found ${allPagerLinks.length} pager links`,
+            );
+
+            const nextPageAttr = $(".facetwp-pager .facetwp-page.next").attr(
+                "data-page",
+            );
+            const lastPageAttr = $(".facetwp-pager .facetwp-page.last").attr(
+                "data-page",
+            );
+
+            console.log(
+                `[Roliascan] Next page attr: ${nextPageAttr}, Last page attr: ${lastPageAttr}`,
+            );
+
             let nextMetadata: number | undefined = undefined;
-            
+
             if (items.length > 0 && page < 10) {
                 nextMetadata = page + 1;
-                console.log(`[Roliascan] Forcing next page to: ${nextMetadata}`);
+                console.log(
+                    `[Roliascan] Forcing next page to: ${nextMetadata}`,
+                );
             }
 
             return {
@@ -221,7 +241,15 @@ export class RoliascanExtension implements RoliascanImplementation {
             await this.checkCloudflareStatus(response.status);
             const jsonStr = Application.arrayBufferToUTF8String(data);
 
-            let jsonData: { most_viewed_series: { url: string; title: string; image: string }[] } | undefined;
+            let jsonData:
+                | {
+                      most_viewed_series: {
+                          url: string;
+                          title: string;
+                          image: string;
+                      }[];
+                  }
+                | undefined;
             try {
                 jsonData = JSON.parse(jsonStr) as typeof jsonData;
             } catch {
@@ -323,10 +351,7 @@ export class RoliascanExtension implements RoliascanImplementation {
         const $ = await this.fetchCheerio(request);
 
         const title =
-            $(".post-type-header-inner h1")
-                .first()
-                .text()
-                .trim() || mangaId;
+            $(".post-type-header-inner h1").first().text().trim() || mangaId;
 
         const rawImageUrl =
             $("img.poster, .col-md-3 img.wp-post-image").first().attr("src") ??
@@ -489,13 +514,26 @@ export class RoliascanExtension implements RoliascanImplementation {
             return new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
         }
 
-        const monthNames = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+        const monthNames = [
+            "jan",
+            "feb",
+            "mar",
+            "apr",
+            "may",
+            "jun",
+            "jul",
+            "aug",
+            "sep",
+            "oct",
+            "nov",
+            "dec",
+        ];
         const dateMatch = lowerText.match(/(\w+)\s+(\d+),\s+(\d+)/);
         if (dateMatch && dateMatch[1] && dateMatch[2] && dateMatch[3]) {
             const monthStr = dateMatch[1];
             const day = parseInt(dateMatch[2]);
             const year = parseInt(dateMatch[3]);
-            const month = monthNames.findIndex(m => monthStr.startsWith(m));
+            const month = monthNames.findIndex((m) => monthStr.startsWith(m));
             if (month !== -1) {
                 return new Date(year, month, day);
             }
@@ -503,8 +541,6 @@ export class RoliascanExtension implements RoliascanImplementation {
 
         return now;
     }
-
-
 
     async getChapterDetails(chapter: Chapter): Promise<ChapterDetails> {
         const chapterUrl = `${baseUrl}/manga/${chapter.sourceManga.mangaId}/chapter-${chapter.chapterId}`;
@@ -525,7 +561,9 @@ export class RoliascanExtension implements RoliascanImplementation {
             const $img = $(el);
 
             if ($img.closest(".ads-contain, .adsbygoogle").length > 0) {
-                console.log(`[Roliascan] Skipped ad container at index ${index}`);
+                console.log(
+                    `[Roliascan] Skipped ad container at index ${index}`,
+                );
                 return;
             }
 
@@ -538,7 +576,9 @@ export class RoliascanExtension implements RoliascanImplementation {
             imgUrl = imgUrl.trim();
 
             if (imgUrl.includes("roliascan.com/wp-content")) {
-                console.log(`[Roliascan] Skipped wp-content image: ${imgUrl.substring(0, 50)}...`);
+                console.log(
+                    `[Roliascan] Skipped wp-content image: ${imgUrl.substring(0, 50)}...`,
+                );
                 return;
             }
 
