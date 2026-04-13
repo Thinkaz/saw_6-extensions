@@ -1,7 +1,6 @@
 import {
     BasicRateLimiter,
     CloudflareError,
-    ContentRating,
     CookieStorageInterceptor,
     DiscoverSectionType,
     Form,

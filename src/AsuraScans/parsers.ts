@@ -1,6 +1,5 @@
 import {
     ContentRating,
-    DiscoverSectionType,
     type Chapter,
     type ChapterDetails,
     type DiscoverSectionItem,
