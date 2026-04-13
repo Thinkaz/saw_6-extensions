@@ -1,5 +1,5 @@
 {
-  "buildTime": "2025-11-05T18:29:48.378Z",
+  "buildTime": "2026-04-13T21:03:06.478Z",
   "builtWith": {
     "toolchain": "1.0.0-alpha.57",
     "types": "1.0.0-alpha.57"
@@ -10,12 +10,12 @@
   },
   "sources": [
     {
-      "name": "Natomanga",
-      "description": "Extension for Natomanga - Read manga and manhwa online",
-      "version": "1.0.0-alpha.12",
+      "name": "AsuraScans",
+      "description": "Extension for AsuraScans - Read manga and manhwa online",
+      "version": "1.0.0-alpha.1",
       "icon": "icon.png",
       "language": "en",
-      "contentRating": "SAFE",
+      "contentRating": "MATURE",
       "capabilities": 117,
       "badges": [],
       "developers": [
@@ -23,16 +23,16 @@
           "name": "Saw_6"
         }
       ],
-      "id": "Natomanga"
+      "id": "AsuraScans"
     },
     {
       "name": "Roliascan",
-      "description": "Extension for Roliascan - Read manga and manhwa online",
-      "version": "1.0.0-alpha.1",
+      "description": "Extension that pulls content from roliascan.com.",
+      "version": "1.0.0-alpha.4",
       "icon": "icon.png",
       "language": "en",
       "contentRating": "SAFE",
-      "capabilities": 117,
+      "capabilities": 85,
       "badges": [],
       "developers": [
         {
