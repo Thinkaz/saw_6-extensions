@@ -147,6 +147,7 @@ export class KaganeExtension implements KaganeImplementation {
                 mangaId,
                 mangaInfo: {
                     primaryTitle: series.name || series.title || "Unknown Title",
+                    secondaryTitles: [],
                     thumbnailUrl: `${API_URL}/series/${mangaId}/thumbnail`,
                     synopsis: series.summary || series.description || "",
                     contentRating: ContentRating.MATURE,
@@ -163,6 +164,7 @@ export class KaganeExtension implements KaganeImplementation {
                 mangaId,
                 mangaInfo: {
                     primaryTitle: $("h1").first().text().trim(),
+                    secondaryTitles: [],
                     thumbnailUrl: `${API_URL}/series/${mangaId}/thumbnail`,
                     synopsis: $("p.leading-relaxed").first().text().trim(),
                     contentRating: ContentRating.MATURE,
@@ -258,7 +260,7 @@ export class KaganeExtension implements KaganeImplementation {
         };
 
         try {
-            const [accessRes, metadataRes] = await Promise.all([
+            const [[accessResponse, accessData], [metadataResponse, metadataData]] = await Promise.all([
                 Application.scheduleRequest(accessRequest),
                 Application.scheduleRequest(metadataRequest)
             ]);
@@ -266,17 +268,17 @@ export class KaganeExtension implements KaganeImplementation {
             let token = "";
             let cacheUrl = "https://kazana.kagane.org";
 
-            if (accessRes.status === 200) {
-                const accessJson = JSON.parse(Application.arrayBufferToUTF8String(accessRes.data));
+            if (accessResponse.status === 200) {
+                const accessJson = JSON.parse(Application.arrayBufferToUTF8String(accessData));
                 token = accessJson.access_token;
                 cacheUrl = accessJson.cache_url || cacheUrl;
             } else {
-                console.log(`[Kagane] Token rejected: ${accessRes.status}. Attempting bypass.`);
+                console.log(`[Kagane] Token rejected: ${accessResponse.status}. Attempting bypass.`);
             }
 
-            if (metadataRes.status !== 200) throw new Error(`Metadata Failed (${metadataRes.status})`);
-            
-            const metaJson = JSON.parse(Application.arrayBufferToUTF8String(metadataRes.data));
+            if (metadataResponse.status !== 200) throw new Error(`Metadata Failed (${metadataResponse.status})`);
+
+            const metaJson = JSON.parse(Application.arrayBufferToUTF8String(metadataData));
             const images = metaJson.image_dimensions;
 
             if (!images || !Array.isArray(images)) throw new Error("No images found");
