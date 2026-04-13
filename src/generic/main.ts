@@ -141,7 +141,9 @@ export class AnimaceGeneric implements AnimaceImplementation {
         return [];
     }
 
-    async getSearchResults(query: SearchQuery): Promise<PagedResults<SearchResultItem>> {
+    async getSearchResults(
+        query: SearchQuery,
+    ): Promise<PagedResults<SearchResultItem>> {
         if (!query.title || query.title.trim() === "") {
             return { items: [] };
         }
@@ -167,7 +169,10 @@ export class AnimaceGeneric implements AnimaceImplementation {
         return this.parser.parseMangaDetails(html, mangaId, this.contentRating);
     }
 
-    async getChapters(sourceManga: SourceManga, sinceDate?: Date): Promise<Chapter[]> {
+    async getChapters(
+        sourceManga: SourceManga,
+        sinceDate?: Date,
+    ): Promise<Chapter[]> {
         void sinceDate;
 
         // First fetch the manga page to get the numeric manga ID
@@ -179,7 +184,9 @@ export class AnimaceGeneric implements AnimaceImplementation {
         const numericId = this.parser.extractMangaNumericId(html);
 
         if (!numericId) {
-            throw new Error(`Could not find numeric manga ID for ${sourceManga.mangaId}`);
+            throw new Error(
+                `Could not find numeric manga ID for ${sourceManga.mangaId}`,
+            );
         }
 
         // Generate auth token for chapter API
@@ -205,7 +212,11 @@ export class AnimaceGeneric implements AnimaceImplementation {
         };
 
         const json = await fetchRequest(request);
-        return this.parser.parseChapterDetails(json, chapter.chapterId, chapter.sourceManga.mangaId);
+        return this.parser.parseChapterDetails(
+            json,
+            chapter.chapterId,
+            chapter.sourceManga.mangaId,
+        );
     }
 
     async saveCloudflareBypassCookies(cookies: Cookie[]): Promise<void> {

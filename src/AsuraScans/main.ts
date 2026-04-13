@@ -23,9 +23,9 @@ import {
     type SettingsFormProviding,
     type SourceManga,
 } from "@paperback/types";
+import { AsuraSettingsForm } from "./forms";
 import { AsuraInterceptor } from "./network";
 import { AsuraParser } from "./parsers";
-import { AsuraSettingsForm } from "./forms";
 import pbconfig from "./pbconfig";
 
 const DOMAIN = "https://asurascans.com";
@@ -147,7 +147,12 @@ export class AsuraScansExtension implements AsuraImplementation {
         );
         const $ = await import("cheerio").then((m) => m.load(dom));
 
-        return this.parser.parseMangaDetails($, htmlStr, mangaId, pbconfig.contentRating);
+        return this.parser.parseMangaDetails(
+            $,
+            htmlStr,
+            mangaId,
+            pbconfig.contentRating,
+        );
     }
 
     async getChapters(

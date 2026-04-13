@@ -57,26 +57,59 @@ function md5(string: string): string {
     function md5I(x: number, y: number, z: number) {
         return y ^ (x | ~z);
     }
-    function md5FF(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
+    function md5FF(
+        a: number,
+        b: number,
+        c: number,
+        d: number,
+        x: number,
+        s: number,
+        ac: number,
+    ) {
         a = addUnsigned(a, addUnsigned(addUnsigned(md5F(b, c, d), x), ac));
         return addUnsigned(rotateLeft(a, s), b);
     }
-    function md5GG(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
+    function md5GG(
+        a: number,
+        b: number,
+        c: number,
+        d: number,
+        x: number,
+        s: number,
+        ac: number,
+    ) {
         a = addUnsigned(a, addUnsigned(addUnsigned(md5G(b, c, d), x), ac));
         return addUnsigned(rotateLeft(a, s), b);
     }
-    function md5HH(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
+    function md5HH(
+        a: number,
+        b: number,
+        c: number,
+        d: number,
+        x: number,
+        s: number,
+        ac: number,
+    ) {
         a = addUnsigned(a, addUnsigned(addUnsigned(md5H(b, c, d), x), ac));
         return addUnsigned(rotateLeft(a, s), b);
     }
-    function md5II(a: number, b: number, c: number, d: number, x: number, s: number, ac: number) {
+    function md5II(
+        a: number,
+        b: number,
+        c: number,
+        d: number,
+        x: number,
+        s: number,
+        ac: number,
+    ) {
         a = addUnsigned(a, addUnsigned(addUnsigned(md5I(b, c, d), x), ac));
         return addUnsigned(rotateLeft(a, s), b);
     }
     function convertToWordArray(str: string) {
         const lMessageLength = str.length;
         const lNumberOfWords_temp1 = lMessageLength + 8;
-        const lNumberOfWords_temp2 = (lNumberOfWords_temp1 - (lNumberOfWords_temp1 % 64)) / 64;
+        const lNumberOfWords_temp2 =
+            (lNumberOfWords_temp1 - (lNumberOfWords_temp1 % 64)) / 64;
         const lNumberOfWords = (lNumberOfWords_temp2 + 1) * 16;
         const lWordArray: number[] = Array(lNumberOfWords - 1);
         let lBytePosition = 0;
@@ -86,12 +119,14 @@ function md5(string: string): string {
             lWordCount = (lByteCount - (lByteCount % 4)) / 4;
             lBytePosition = (lByteCount % 4) * 8;
             lWordArray[lWordCount] =
-                lWordArray[lWordCount]! | (str.charCodeAt(lByteCount) << lBytePosition);
+                lWordArray[lWordCount]! |
+                (str.charCodeAt(lByteCount) << lBytePosition);
             lByteCount++;
         }
         lWordCount = (lByteCount - (lByteCount % 4)) / 4;
         lBytePosition = (lByteCount % 4) * 8;
-        lWordArray[lWordCount] = lWordArray[lWordCount]! | (0x80 << lBytePosition);
+        lWordArray[lWordCount] =
+            lWordArray[lWordCount]! | (0x80 << lBytePosition);
         lWordArray[lNumberOfWords - 2] = lMessageLength << 3;
         lWordArray[lNumberOfWords - 1] = lMessageLength >>> 29;
         return lWordArray;
@@ -187,6 +222,11 @@ function md5(string: string): string {
         d = addUnsigned(d, DD);
     }
 
-    return (wordToHex(a) + wordToHex(b) + wordToHex(c) + wordToHex(d)).toLowerCase();
+    return (
+        wordToHex(a) +
+        wordToHex(b) +
+        wordToHex(c) +
+        wordToHex(d)
+    ).toLowerCase();
 }
 /* eslint-enable */

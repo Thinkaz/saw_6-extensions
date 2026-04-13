@@ -32,9 +32,15 @@ function decodeAstroValue(val: unknown): unknown {
     }
 
     if (type === 0) {
-        if (value !== null && typeof value === "object" && !Array.isArray(value)) {
+        if (
+            value !== null &&
+            typeof value === "object" &&
+            !Array.isArray(value)
+        ) {
             const result: Record<string, unknown> = {};
-            for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+            for (const [k, v] of Object.entries(
+                value as Record<string, unknown>,
+            )) {
                 result[k] = decodeAstroValue(v);
             }
             return result;
@@ -68,7 +74,9 @@ function parseAstroProps(
     try {
         parsed = JSON.parse(raw) as Record<string, unknown>;
     } catch {
-        console.error(`[AsuraScans] Failed to parse props for ${componentName}`);
+        console.error(
+            `[AsuraScans] Failed to parse props for ${componentName}`,
+        );
         return null;
     }
 
@@ -131,7 +139,10 @@ export class AsuraParser {
     private domain: string;
     private checkStatus: (status: number) => Promise<void>;
 
-    constructor(domain: string, checkStatus: (status: number) => Promise<void>) {
+    constructor(
+        domain: string,
+        checkStatus: (status: number) => Promise<void>,
+    ) {
         this.domain = domain;
         this.checkStatus = checkStatus;
     }
@@ -163,11 +174,19 @@ export class AsuraParser {
             const mangaId = extractMangaId(href);
             if (!mangaId) return;
 
-            const title = $el.find("h3").first().text().trim() || $el.find("img").attr("alt")?.trim() || "";
+            const title =
+                $el.find("h3").first().text().trim() ||
+                $el.find("img").attr("alt")?.trim() ||
+                "";
             const imageUrl = $el.find("img").attr("src") ?? "";
 
             if (mangaId && title) {
-                items.push({ mangaId, title, imageUrl, type: "featuredCarouselItem" });
+                items.push({
+                    mangaId,
+                    title,
+                    imageUrl,
+                    type: "featuredCarouselItem",
+                });
             }
         });
 
@@ -194,7 +213,12 @@ export class AsuraParser {
             const imageUrl = serie.cover_url ?? serie.cover ?? "";
 
             if (mangaId && title) {
-                items.push({ mangaId, title, imageUrl, type: "simpleCarouselItem" });
+                items.push({
+                    mangaId,
+                    title,
+                    imageUrl,
+                    type: "simpleCarouselItem",
+                });
             }
         }
 
@@ -210,7 +234,8 @@ export class AsuraParser {
         const items: DiscoverSectionItem[] = [];
 
         const props = parseAstroProps(htmlStr, "BrowseFilters");
-        const raw = (props?.["initialSeries"] as AsuraSeriesItem[] | undefined) ?? [];
+        const raw =
+            (props?.["initialSeries"] as AsuraSeriesItem[] | undefined) ?? [];
 
         for (const serie of raw) {
             const href = serie.public_url ?? "";
@@ -221,9 +246,10 @@ export class AsuraParser {
             const imageUrl = serie.cover_url ?? serie.cover ?? "";
 
             const latestChapter = serie.latest_chapters?.[0];
-            const chapterId = latestChapter?.number !== undefined
-                ? String(latestChapter.number)
-                : undefined;
+            const chapterId =
+                latestChapter?.number !== undefined
+                    ? String(latestChapter.number)
+                    : undefined;
             const chapterTitle = latestChapter?.title
                 ? `Chapter ${latestChapter.number}`
                 : undefined;
@@ -253,7 +279,8 @@ export class AsuraParser {
 
         $(".series-card").each((_i, el) => {
             const $el = $(el);
-            const href = $el.find("a[href*='/comics/']").first().attr("href") ?? "";
+            const href =
+                $el.find("a[href*='/comics/']").first().attr("href") ?? "";
             const mangaId = extractMangaId(href);
             if (!mangaId) return;
 
@@ -291,17 +318,27 @@ export class AsuraParser {
 
         $('script[type="application/ld+json"]').each((_i, el) => {
             try {
-                const json = JSON.parse($(el).html() ?? "{}") as Record<string, unknown>;
+                const json = JSON.parse($(el).html() ?? "{}") as Record<
+                    string,
+                    unknown
+                >;
                 if (json["@type"] === "ComicSeries") {
                     title = (json["name"] as string) || title;
-                    description = (json["description"] as string) || description;
-                    author = (json["author"] as Record<string, string> | undefined)?.["name"] || author;
+                    description =
+                        (json["description"] as string) || description;
+                    author =
+                        (
+                            json["author"] as Record<string, string> | undefined
+                        )?.["name"] || author;
                     imageUrl = (json["image"] as string) || imageUrl;
 
                     const genres = json["genre"] as string[] | undefined;
                     if (Array.isArray(genres)) {
                         for (const g of genres) {
-                            tags.push({ id: g.toLowerCase().replace(/\s+/g, "-"), title: g });
+                            tags.push({
+                                id: g.toLowerCase().replace(/\s+/g, "-"),
+                                title: g,
+                            });
                         }
                     }
                 }
@@ -313,16 +350,21 @@ export class AsuraParser {
         // Cover fallback: first CDN cover img on page
         if (!imageUrl) {
             imageUrl =
-                $("img[src*='cdn.asurascans.com'][src*='/covers/']").first().attr("src") ?? "";
+                $("img[src*='cdn.asurascans.com'][src*='/covers/']")
+                    .first()
+                    .attr("src") ?? "";
         }
 
         // Status: look for the "Status" label and read the adjacent span text
         let status: "ONGOING" | "COMPLETED" | "UNKNOWN" = "UNKNOWN";
-        const statusMatch = htmlStr.match(/Status<\/div>\s*<div[^>]*>\s*<span[^>]*><\/span>\s*<span[^>]*capitalize[^>]*>\s*([\w]+)\s*<\/span>/i);
+        const statusMatch = htmlStr.match(
+            /Status<\/div>\s*<div[^>]*>\s*<span[^>]*><\/span>\s*<span[^>]*capitalize[^>]*>\s*([\w]+)\s*<\/span>/i,
+        );
         if (statusMatch?.[1]) {
             const s = statusMatch[1].toLowerCase();
             if (s === "ongoing") status = "ONGOING";
-            else if (s === "completed" || s === "complete") status = "COMPLETED";
+            else if (s === "completed" || s === "complete")
+                status = "COMPLETED";
         }
 
         const tagSections: TagSection[] =
@@ -353,7 +395,8 @@ export class AsuraParser {
         const chapters: Chapter[] = [];
 
         const props = parseAstroProps(htmlStr, "ChapterListReact");
-        const raw = (props?.["chapters"] as AsuraChapterItem[] | undefined) ?? [];
+        const raw =
+            (props?.["chapters"] as AsuraChapterItem[] | undefined) ?? [];
 
         for (const ch of raw) {
             if (ch.number === undefined) continue;
@@ -403,15 +446,23 @@ export class AsuraParser {
         // 1. Public API – works for all free/unlocked chapters
         const publicPages = await this.callChapterAPI(mangaId, chapterId);
         if (publicPages.length > 0) {
-            console.log(`[AsuraScans] Chapter ${chapterId} – ${publicPages.length} pages (API, no auth)`);
+            console.log(
+                `[AsuraScans] Chapter ${chapterId} – ${publicPages.length} pages (API, no auth)`,
+            );
             return { id: chapterId, mangaId, pages: publicPages };
         }
 
         // 2. Authenticated API – unlocks early-access chapters for premium users
         if (accessToken) {
-            const authPages = await this.callChapterAPI(mangaId, chapterId, accessToken);
+            const authPages = await this.callChapterAPI(
+                mangaId,
+                chapterId,
+                accessToken,
+            );
             if (authPages.length > 0) {
-                console.log(`[AsuraScans] Chapter ${chapterId} – ${authPages.length} pages (API, auth)`);
+                console.log(
+                    `[AsuraScans] Chapter ${chapterId} – ${authPages.length} pages (API, auth)`,
+                );
                 return { id: chapterId, mangaId, pages: authPages };
             }
             throw new Error(
@@ -427,10 +478,14 @@ export class AsuraParser {
         const htmlStr = await this.fetchHTML(request);
         const props = parseAstroProps(htmlStr, "ChapterReader");
         const rawPages = (props?.["pages"] as AsuraPage[] | undefined) ?? [];
-        const pages = rawPages.map((p) => p.url ?? "").filter((u) => u.startsWith("http"));
+        const pages = rawPages
+            .map((p) => p.url ?? "")
+            .filter((u) => u.startsWith("http"));
 
         if (pages.length > 0) {
-            console.log(`[AsuraScans] Chapter ${chapterId} – ${pages.length} pages (HTML fallback)`);
+            console.log(
+                `[AsuraScans] Chapter ${chapterId} – ${pages.length} pages (HTML fallback)`,
+            );
             return { id: chapterId, mangaId, pages };
         }
 
@@ -468,7 +523,9 @@ export class AsuraParser {
         }
 
         if (response.status !== 200) {
-            console.log(`[AsuraScans] API ${response.status} for ${mangaId}/ch${chapterId}`);
+            console.log(
+                `[AsuraScans] API ${response.status} for ${mangaId}/ch${chapterId}`,
+            );
             return [];
         }
 
@@ -476,9 +533,9 @@ export class AsuraParser {
             Application.arrayBufferToUTF8String(data),
         ) as Record<string, unknown>;
 
-        const chapter = (
-            (json["data"] as Record<string, unknown> | undefined)?.["chapter"]
-        ) as Record<string, unknown> | undefined;
+        const chapter = (json["data"] as Record<string, unknown> | undefined)?.[
+            "chapter"
+        ] as Record<string, unknown> | undefined;
 
         const apiPages = (chapter?.["pages"] as AsuraPage[]) ?? [];
         return apiPages

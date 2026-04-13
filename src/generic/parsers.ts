@@ -114,7 +114,10 @@ export class AnimaceParser {
         return { items, metadata: undefined };
     }
 
-    parseLatestUpdates(jsonStr: string, page: number): PagedResults<DiscoverSectionItem> {
+    parseLatestUpdates(
+        jsonStr: string,
+        page: number,
+    ): PagedResults<DiscoverSectionItem> {
         const items: DiscoverSectionItem[] = [];
 
         let response: { success: boolean; data: LatestChapterEntry[] };
@@ -175,7 +178,12 @@ export class AnimaceParser {
             const imageUrl = this.helper.fixImageUrl(manga.cover);
 
             if (mangaId && title) {
-                items.push({ mangaId, title, imageUrl, type: "simpleCarouselItem" });
+                items.push({
+                    mangaId,
+                    title,
+                    imageUrl,
+                    type: "simpleCarouselItem",
+                });
             }
         }
 
@@ -193,7 +201,8 @@ export class AnimaceParser {
         }
 
         for (const entry of data) {
-            const mangaId = entry.slug || this.extractMangaSlug(entry.permalink);
+            const mangaId =
+                entry.slug || this.extractMangaSlug(entry.permalink);
             const title = entry.title;
             const imageUrl = this.helper.fixImageUrl(entry.thumbnail);
 
@@ -210,7 +219,11 @@ export class AnimaceParser {
         return { items: results };
     }
 
-    parseMangaDetails(html: string, mangaId: string, contentRating: ContentRating): SourceManga {
+    parseMangaDetails(
+        html: string,
+        mangaId: string,
+        contentRating: ContentRating,
+    ): SourceManga {
         const $ = cheerio.load(html);
 
         // Extract title from h1
@@ -220,7 +233,10 @@ export class AnimaceParser {
         let imageUrl = "";
         $('script[type="application/ld+json"]').each((_i, el) => {
             try {
-                const ld = JSON.parse($(el).html() ?? "") as { "@type"?: string; image?: string };
+                const ld = JSON.parse($(el).html() ?? "") as {
+                    "@type"?: string;
+                    image?: string;
+                };
                 if (ld["@type"] === "ComicSeries" && ld.image) {
                     imageUrl = ld.image;
                 }
@@ -270,11 +286,15 @@ export class AnimaceParser {
         let status: "ONGOING" | "COMPLETED" | "UNKNOWN" = "UNKNOWN";
         $('script[type="application/ld+json"]').each((_i, el) => {
             try {
-                const ld = JSON.parse($(el).html() ?? "") as { "@type"?: string; status?: string };
+                const ld = JSON.parse($(el).html() ?? "") as {
+                    "@type"?: string;
+                    status?: string;
+                };
                 if (ld["@type"] === "ComicSeries" && ld.status) {
                     const s = ld.status.toLowerCase();
                     if (s.includes("ongoing")) status = "ONGOING";
-                    else if (s.includes("completed") || s.includes("complete")) status = "COMPLETED";
+                    else if (s.includes("completed") || s.includes("complete"))
+                        status = "COMPLETED";
                 }
             } catch {
                 /* skip */
@@ -321,7 +341,12 @@ export class AnimaceParser {
     parseChapters(jsonStr: string, sourceManga: SourceManga): Chapter[] {
         const chapters: Chapter[] = [];
 
-        let response: { success: boolean; chapters: ChapterEntry[]; total: number; has_more: boolean };
+        let response: {
+            success: boolean;
+            chapters: ChapterEntry[];
+            total: number;
+            has_more: boolean;
+        };
         try {
             response = JSON.parse(jsonStr) as typeof response;
         } catch {
@@ -335,7 +360,10 @@ export class AnimaceParser {
         for (const entry of response.chapters) {
             const chapterId = entry.id;
             const chapNum = parseFloat(entry.chapter) || 0;
-            const chapterTitle = entry.title && entry.title !== "N/A" ? entry.title.trim() : undefined;
+            const chapterTitle =
+                entry.title && entry.title !== "N/A"
+                    ? entry.title.trim()
+                    : undefined;
             const publishDate = this.parseRelativeDate(entry.date);
 
             chapters.push({
@@ -352,7 +380,11 @@ export class AnimaceParser {
         return chapters;
     }
 
-    parseChapterDetails(jsonStr: string, chapterId: string, mangaId: string): ChapterDetails {
+    parseChapterDetails(
+        jsonStr: string,
+        chapterId: string,
+        mangaId: string,
+    ): ChapterDetails {
         let response: ChapterContentResponse;
         try {
             response = JSON.parse(jsonStr) as ChapterContentResponse;
@@ -360,11 +392,17 @@ export class AnimaceParser {
             throw new Error("Failed to parse chapter content JSON.");
         }
 
-        if (!response.success || !response.images || response.images.length === 0) {
+        if (
+            !response.success ||
+            !response.images ||
+            response.images.length === 0
+        ) {
             throw new Error(`No images found for chapter ${chapterId}.`);
         }
 
-        const pages = response.images.map((url) => this.helper.fixImageUrl(url));
+        const pages = response.images.map((url) =>
+            this.helper.fixImageUrl(url),
+        );
 
         return {
             id: chapterId,
@@ -387,27 +425,39 @@ export class AnimaceParser {
 
         const minutesMatch = lowerText.match(/(\d+)\s*min/);
         if (minutesMatch?.[1]) {
-            return new Date(now.getTime() - parseInt(minutesMatch[1]) * 60 * 1000);
+            return new Date(
+                now.getTime() - parseInt(minutesMatch[1]) * 60 * 1000,
+            );
         }
 
         const hoursMatch = lowerText.match(/(\d+)\s*hour/);
         if (hoursMatch?.[1]) {
-            return new Date(now.getTime() - parseInt(hoursMatch[1]) * 60 * 60 * 1000);
+            return new Date(
+                now.getTime() - parseInt(hoursMatch[1]) * 60 * 60 * 1000,
+            );
         }
 
         const daysMatch = lowerText.match(/(\d+)\s*day/);
         if (daysMatch?.[1]) {
-            return new Date(now.getTime() - parseInt(daysMatch[1]) * 24 * 60 * 60 * 1000);
+            return new Date(
+                now.getTime() - parseInt(daysMatch[1]) * 24 * 60 * 60 * 1000,
+            );
         }
 
         const weeksMatch = lowerText.match(/(\d+)\s*week/);
         if (weeksMatch?.[1]) {
-            return new Date(now.getTime() - parseInt(weeksMatch[1]) * 7 * 24 * 60 * 60 * 1000);
+            return new Date(
+                now.getTime() -
+                    parseInt(weeksMatch[1]) * 7 * 24 * 60 * 60 * 1000,
+            );
         }
 
         const monthsMatch = lowerText.match(/(\d+)\s*month/);
         if (monthsMatch?.[1]) {
-            return new Date(now.getTime() - parseInt(monthsMatch[1]) * 30 * 24 * 60 * 60 * 1000);
+            return new Date(
+                now.getTime() -
+                    parseInt(monthsMatch[1]) * 30 * 24 * 60 * 60 * 1000,
+            );
         }
 
         const monthNames = [
@@ -426,9 +476,15 @@ export class AnimaceParser {
         ];
         const dateMatch = lowerText.match(/(\w+)\s+(\d+),\s+(\d+)/);
         if (dateMatch?.[1] && dateMatch[2] && dateMatch[3]) {
-            const month = monthNames.findIndex((m) => dateMatch[1]!.startsWith(m));
+            const month = monthNames.findIndex((m) =>
+                dateMatch[1]!.startsWith(m),
+            );
             if (month !== -1) {
-                return new Date(parseInt(dateMatch[3]), month, parseInt(dateMatch[2]));
+                return new Date(
+                    parseInt(dateMatch[3]),
+                    month,
+                    parseInt(dateMatch[2]),
+                );
             }
         }
 

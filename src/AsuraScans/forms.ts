@@ -35,14 +35,22 @@ class State<T> {
 }
 
 export class AsuraSettingsForm extends Form {
-    emailInput = new State(this, (Application.getState("asura_email") as string) ?? "");
+    emailInput = new State(
+        this,
+        (Application.getState("asura_email") as string) ?? "",
+    );
     passwordInput = new State(this, "");
     statusMessage = new State(this, "");
 
     override getSections(): FormSectionElement[] {
-        const savedEmail = (Application.getState("asura_email") as string) ?? "";
-        const hasToken = Boolean(Application.getSecureState("asura_access_token"));
-        const loginStatus = hasToken ? `Logged in as ${savedEmail}` : "Not logged in";
+        const savedEmail =
+            (Application.getState("asura_email") as string) ?? "";
+        const hasToken = Boolean(
+            Application.getSecureState("asura_access_token"),
+        );
+        const loginStatus = hasToken
+            ? `Logged in as ${savedEmail}`
+            : "Not logged in";
 
         return [
             Section("status", [
@@ -109,7 +117,9 @@ export class AsuraSettingsForm extends Form {
         const password = this.passwordInput.value;
 
         if (!email || !password) {
-            await this.statusMessage.updateValue("Email and password are required.");
+            await this.statusMessage.updateValue(
+                "Email and password are required.",
+            );
             return;
         }
 
@@ -128,7 +138,8 @@ export class AsuraSettingsForm extends Form {
             ) as Record<string, unknown>;
 
             if (response.status !== 200) {
-                const errMsg = (json["error"] as string) ?? `HTTP ${response.status}`;
+                const errMsg =
+                    (json["error"] as string) ?? `HTTP ${response.status}`;
                 await this.statusMessage.updateValue(`Login failed: ${errMsg}`);
                 return;
             }

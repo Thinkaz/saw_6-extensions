@@ -18,8 +18,7 @@ export class AnimaceInterceptor extends PaperbackInterceptor {
             referer: `${this.domain}/`,
             origin: this.domain,
             "user-agent": await Application.getDefaultUserAgent(),
-            accept:
-                "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/avif,*/*;q=0.8",
+            accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/avif,*/*;q=0.8",
             "accept-language": "en-US,en;q=0.5",
             "accept-encoding": "gzip, deflate, br",
             "cache-control": "no-cache",
@@ -43,13 +42,19 @@ export class AnimaceInterceptor extends PaperbackInterceptor {
     }
 }
 
-export async function checkStatus(status: number, request: Request): Promise<void> {
+export async function checkStatus(
+    status: number,
+    request: Request,
+): Promise<void> {
     if (status >= 200 && status < 300) {
         return;
     }
 
     if (status === 503 || status === 403) {
-        throw new CloudflareError(request, `Cloudflare bypass required (Status: ${status})`);
+        throw new CloudflareError(
+            request,
+            `Cloudflare bypass required (Status: ${status})`,
+        );
     }
     throw new Error(`HTTP Error: ${status} for url: ${request.url}`);
 }
