@@ -4,20 +4,28 @@ import {
     type Response,
 } from "@paperback/types";
 
-// Intercepts all the requests and responses and allows you to make changes to them
 export class MainInterceptor extends PaperbackInterceptor {
     override async interceptRequest(request: Request): Promise<Request> {
+        const isApi = request.url.includes("api.kagane.org");
+        
+        // Préférences utilisateur pour forcer l'affichage complet
+        const userPreferences = JSON.stringify({
+            viewMode: "grid",
+            pageSize: 200,
+            chapterSort: "desc", 
+            hideReadChapters: false,
+            thumbnailSize: "normal",
+        });
+        const encodedPreferences = encodeURIComponent(userPreferences);
+
+        // On définit les headers de base.
+        // IMPORTANT : On NE définit PAS 'Content-Type' ici pour ne pas écraser celui du POST.
         request.headers = {
             ...request.headers,
-            referer: `https://www.natomanga.com/`,
-            origin: `https://www.natomanga.com`,
-            "user-agent": await Application.getDefaultUserAgent(),
-            accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/avif,*/*;q=0.8",
-            "accept-language": "en-US,en;q=0.5",
-            "accept-encoding": "gzip, deflate, br",
-            "cache-control": "no-cache",
-            pragma: "no-cache",
-            "upgrade-insecure-requests": "1",
+            "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:145.0) Gecko/20100101 Firefox/145.0",
+            referer: "https://kagane.org/",
+            origin: "https://kagane.org",
+            cookie: `kagane_content_rating=%5B%22safe%22%2C%22suggestive%22%5D; kagane_content_rating_onboarding=true; chaptersPerPage=200; kagane-user-preferences=${encodedPreferences}`,
         };
 
         return request;
@@ -28,9 +36,6 @@ export class MainInterceptor extends PaperbackInterceptor {
         response: Response,
         data: ArrayBuffer,
     ): Promise<ArrayBuffer> {
-        void request;
-        void response;
-
         return data;
     }
 }

@@ -4,12 +4,19 @@ import {
     type Response,
 } from "@paperback/types";
 
-export class MainInterceptor extends PaperbackInterceptor {
+export class AsuraInterceptor extends PaperbackInterceptor {
+    private domain: string;
+
+    constructor(id: string, domain: string) {
+        super(id);
+        this.domain = domain;
+    }
+
     override async interceptRequest(request: Request): Promise<Request> {
         request.headers = {
             ...request.headers,
-            referer: `https://roliascan.com/`,
-            origin: `https://roliascan.com`,
+            referer: `${this.domain}/`,
+            origin: this.domain,
             "user-agent": await Application.getDefaultUserAgent(),
             accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/avif,*/*;q=0.8",
             "accept-language": "en-US,en;q=0.5",
